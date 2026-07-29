@@ -31,14 +31,20 @@ export function GroupOutcomesList({
           return (
             <button
               key={market.marketId}
-              className={`w-full text-left px-4 py-3 flex items-center justify-between gap-3 transition-colors border-b border-default-100 last:border-b-0 hover:bg-default-100 ${
-                isSelected ? "bg-default-100" : ""
+              className={`w-full text-left px-4 py-3 flex items-center justify-between gap-3 transition-all ${
+                isSelected
+                  ? "relative z-10 my-0.5 rounded-lg border-2 border-cyan-400 bg-cyan-400/15 shadow-[0_0_16px_rgba(34,211,238,0.2)]"
+                  : "border-b border-default-100 last:border-b-0 hover:bg-default-100"
               }`}
               type="button"
               onClick={() => onSelectMarket(market.marketId)}
             >
               <div className="flex flex-col gap-0.5 flex-1 min-w-0">
-                <span className="text-sm font-medium truncate">
+                <span
+                  className={`text-sm truncate ${
+                    isSelected ? "font-semibold text-cyan-300" : "font-medium"
+                  }`}
+                >
                   {market.name}
                 </span>
                 <span className="text-xs text-default-400">

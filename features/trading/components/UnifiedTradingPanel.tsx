@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, type CSSProperties } from "react";
 import { Card, CardHeader, CardBody } from "@heroui/card";
 import { Button } from "@heroui/button";
-import { Tabs, Tab } from "@heroui/tabs";
 import {
   minBuyTickToCross,
   maxSellTickToCross,
@@ -18,6 +17,14 @@ import { MergeModal } from "./MergeModal";
 
 import { useOrderbookLevels } from "@/features/orderbook/hooks/useOrderbookLevels";
 import { useMarketFees } from "@/features/market-detail/hooks/useMarketFees";
+import { alpha, colors, shadows } from "@/lib/tokens";
+
+const neonSelectedStyle = (accent: string): CSSProperties => ({
+  background: alpha(accent, 0.2),
+  color: accent,
+  border: `1px solid ${alpha(accent, 0.7)}`,
+  boxShadow: shadows.glow(accent),
+});
 
 interface UnifiedTradingPanelProps {
   marketId: string;
@@ -178,17 +185,33 @@ export function UnifiedTradingPanel({
         <CardHeader className="flex flex-col gap-3 pb-0">
           {/* Row 1: Buy/Sell toggle (left) + Mode dropdown (right) */}
           <div className="flex justify-between items-center w-full">
-            <Tabs
-              classNames={{ tabList: "gap-0 w-auto", tab: "px-4" }}
-              color={side === "BUY" ? "primary" : "secondary"}
-              selectedKey={side}
-              size="sm"
-              variant="underlined"
-              onSelectionChange={(key) => setSide(key as "BUY" | "SELL")}
-            >
-              <Tab key="BUY" title="Buy" />
-              <Tab key="SELL" title="Sell" />
-            </Tabs>
+            <div className="flex gap-1">
+              {(["BUY", "SELL"] as const).map((value) => {
+                const isActive = side === value;
+                const accent =
+                  value === "BUY" ? colors.neonCyan : colors.neonMagenta;
+
+                return (
+                  <button
+                    key={value}
+                    className="rounded-lg px-4 py-1.5 text-sm font-semibold transition-all"
+                    style={
+                      isActive
+                        ? neonSelectedStyle(accent)
+                        : {
+                            color: colors.textMuted,
+                            background: "transparent",
+                            border: "1px solid transparent",
+                          }
+                    }
+                    type="button"
+                    onClick={() => setSide(value)}
+                  >
+                    {value === "BUY" ? "Buy" : "Sell"}
+                  </button>
+                );
+              })}
+            </div>
 
             <TradingModeDropdown
               mode={mode}
@@ -201,20 +224,30 @@ export function UnifiedTradingPanel({
           {/* Row 2: Outcome selector */}
           <div className="flex gap-1 w-full">
             <Button
-              className="flex-1"
-              color={outcomeIndex === 0 ? "primary" : "default"}
+              className="flex-1 font-semibold"
+              color="default"
               size="sm"
-              variant={outcomeIndex === 0 ? "solid" : "flat"}
+              style={
+                outcomeIndex === 0
+                  ? neonSelectedStyle(colors.neonCyan)
+                  : undefined
+              }
+              variant="flat"
               onPress={() => setOutcomeIndex(0)}
             >
               {outcomes[0] || "Yes"}
               {displayCents0 != null ? ` ${displayCents0}¢` : ""}
             </Button>
             <Button
-              className="flex-1"
-              color={outcomeIndex === 1 ? "secondary" : "default"}
+              className="flex-1 font-semibold"
+              color="default"
               size="sm"
-              variant={outcomeIndex === 1 ? "solid" : "flat"}
+              style={
+                outcomeIndex === 1
+                  ? neonSelectedStyle(colors.neonMagenta)
+                  : undefined
+              }
+              variant="flat"
               onPress={() => setOutcomeIndex(1)}
             >
               {outcomes[1] || "No"}
