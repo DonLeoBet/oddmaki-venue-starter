@@ -102,6 +102,8 @@ export const queryKeys = {
   marketGroups: {
     all: ["marketGroups"] as const,
     list: (venueId?: string) => ["marketGroups", "list", venueId] as const,
+    outrights: (venueId?: string, status?: string) =>
+      ["marketGroups", "outrights", venueId, status] as const,
     detail: (groupId: string) => ["marketGroups", "detail", groupId] as const,
     markets: (groupId: string) => ["marketGroups", "markets", groupId] as const,
   },
@@ -116,6 +118,23 @@ export const queryKeys = {
     all: ["marketSearch"] as const,
     index: (venueId?: string, locale?: string) =>
       ["marketSearch", "index", venueId, locale] as const,
+  },
+
+  fixtureTeams: {
+    all: ["fixtureTeams"] as const,
+    detail: (fixtureId?: string) => ["fixtureTeams", fixtureId] as const,
+  },
+
+  leagueTeams: {
+    all: ["leagueTeams"] as const,
+    detail: (leagueId?: string, season?: string) =>
+      ["leagueTeams", leagueId, season] as const,
+  },
+
+  categoryMarkets: {
+    all: ["categoryMarkets"] as const,
+    list: (venueId?: string, leagueSlug?: string, marketType?: string) =>
+      ["categoryMarkets", venueId, leagueSlug, marketType] as const,
   },
 
   accessControl: {

@@ -10,7 +10,7 @@ import { venueConfig } from "@/config/venue.config";
 import { resolveVenueName } from "@/lib/oddmaki/venue-name";
 import { fontSans } from "@/config/fonts";
 import { Navbar } from "@/components/navbar";
-import { CategoryNav } from "@/components/category-nav";
+import { AppShell } from "@/components/app-shell";
 import { NavigationProgress } from "@/components/navigation-progress";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -51,12 +51,9 @@ export default function RootLayout({
       >
         <Providers themeProps={{ attribute: "class", defaultTheme: "dark" }}>
           <NavigationProgress />
-          <div className="relative flex flex-col h-screen">
+          <div className="relative flex min-h-screen flex-col">
             <Navbar />
-            <CategoryNav />
-            <main className="container mx-auto max-w-7xl pt-2 px-3 sm:px-6 flex flex-col flex-grow">
-              {children}
-            </main>
+            <AppShell>{children}</AppShell>
             <footer className="w-full flex items-center justify-center py-3">
               <span className="text-default-500 text-sm">
                 <p>

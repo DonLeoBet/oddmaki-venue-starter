@@ -7,6 +7,7 @@ import {
   type TopLeague,
 } from "@/config/top-leagues";
 import { fetchOutrightParticipants } from "./fetch-outright-participants";
+import { discoverOutrightLeaguesForSeason } from "./discover-outright-leagues";
 import { outrightTag } from "./constants";
 import { formatOutrightWinnerTitle, formatSeasonLabel } from "./season";
 
@@ -19,6 +20,8 @@ export interface FetchOutrightTeamsOptions {
   season?: number;
   /** Limit fetch to specific league IDs (e.g. [88] for Eredivisie smoke test) */
   leagueIds?: number[];
+  /** Discover worldwide leagues from API-Football for the target season. */
+  discoverWorld?: boolean;
 }
 
 export interface OutrightLeagueFetchResult {
@@ -43,7 +46,19 @@ export async function fetchOutrightLeagueTeams(
   options: FetchOutrightTeamsOptions = {},
 ): Promise<OutrightLeagueFetchResult[]> {
   const season = options.season ?? OUTRIGHT_SEASON_YEAR;
-  const leagues = resolveTopLeagues(options.leagueIds);
+
+  let leagues: TopLeague[];
+
+  if (options.leagueIds?.length) {
+    leagues = resolveTopLeagues(options.leagueIds);
+  } else if (options.discoverWorld) {
+    leagues = await discoverOutrightLeaguesForSeason(season);
+    console.info(
+      `${LOG_PREFIX} discovered ${leagues.length} outright leagues for season=${season}`,
+    );
+  } else {
+    leagues = resolveTopLeagues();
+  }
 
   if (leagues.length === 0) {
     throw new Error(

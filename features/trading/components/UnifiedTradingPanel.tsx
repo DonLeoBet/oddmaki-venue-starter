@@ -23,6 +23,7 @@ import { MergeModal } from "./MergeModal";
 
 import { useOrderbookLevels } from "@/features/orderbook/hooks/useOrderbookLevels";
 import { useMarketFees } from "@/features/market-detail/hooks/useMarketFees";
+import { TeamLogo } from "@/components/football/TeamLogo";
 import { MarketImage } from "@/features/markets/components/MarketImage";
 import { alpha, colors, shadows } from "@/lib/tokens";
 
@@ -43,6 +44,8 @@ interface UnifiedTradingPanelProps {
   /** Group market label, e.g. "1X2 · Ajax" or "Harry Kane" */
   marketLabel?: string;
   metadataURI?: string;
+  /** Team crest for team-specific match markets (replaces letter avatar). */
+  teamLogoUrl?: string | null;
   initialOutcomeIndex?: 0 | 1;
 }
 
@@ -54,6 +57,7 @@ export function UnifiedTradingPanel({
   noPrice,
   marketLabel,
   metadataURI,
+  teamLogoUrl,
   initialOutcomeIndex = 0,
 }: UnifiedTradingPanelProps) {
   const [mode, setMode] = useState<"market" | "limit">("limit");
@@ -206,12 +210,15 @@ export function UnifiedTradingPanel({
         <CardHeader className="flex flex-col gap-3 pb-0">
           {marketLabel ? (
             <div className="flex w-full items-center gap-2.5">
-              <MarketImage
-                metadataURI={metadataURI ?? ""}
-                name={marketLabel}
-                showFallback
-                size="md"
-              />
+              {teamLogoUrl ? (
+                <TeamLogo name={marketLabel} size="md" src={teamLogoUrl} />
+              ) : (
+                <MarketImage
+                  metadataURI={metadataURI ?? ""}
+                  name={marketLabel}
+                  size="md"
+                />
+              )}
               <span className="truncate text-base font-semibold text-foreground">
                 {marketLabel}
               </span>

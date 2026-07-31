@@ -13,6 +13,12 @@ import {
   toMarketSearchRecord,
   type MarketSearchRecord,
 } from "../utils/matchMarketSearch";
+import {
+  buildMaxOutrightRevisionMap,
+  isLegacyMatchGroup,
+  isOutrightGroup,
+  isSupersededOutrightInBatch,
+} from "@/lib/markets/marketFilters";
 
 const PAGE_SIZE = 100;
 const MAX_GROUPS = 1000;
@@ -23,6 +29,16 @@ async function fetchMarketSearchIndex(
   locale: Locale,
 ): Promise<MarketSearchRecord[]> {
   const records: MarketSearchRecord[] = [];
+  const rawGroups: Array<{
+    formatted: {
+      groupId: string;
+      marketQuestion: string;
+      status: string;
+      outcomes?: Array<{ name: string; isPlaceholder?: boolean }>;
+    };
+    tags: string[];
+    outcomes: Array<{ name: string }>;
+  }> = [];
 
   for (let skip = 0; skip < MAX_GROUPS; skip += PAGE_SIZE) {
     const result = (await client.public.getMarketGroups({
@@ -35,6 +51,7 @@ async function fetchMarketSearchIndex(
         marketQuestion?: string;
         tags?: string[];
         status?: string;
+        markets?: Array<{ marketName?: string; name?: string }>;
       }>;
     };
 
@@ -47,20 +64,50 @@ async function fetchMarketSearchIndex(
         groupId: string;
         marketQuestion: string;
         status: string;
+        outcomes?: Array<{ name: string; isPlaceholder?: boolean }>;
       };
 
-      records.push(
-        toMarketSearchRecord(
-          String(formatted.groupId ?? raw.groupId),
-          formatted.marketQuestion ?? raw.marketQuestion ?? "",
-          raw.tags ?? [],
-          formatted.status ?? raw.status ?? "Active",
-          locale,
-        ),
+      const tags = raw.tags ?? [];
+      const outcomes = (formatted.outcomes ?? raw.markets ?? []).map(
+        (outcome: { name?: string; marketName?: string }) => ({
+          name: outcome.name ?? outcome.marketName ?? "",
+        }),
       );
+
+      rawGroups.push({ formatted, tags, outcomes });
     }
 
     if (batch.length < PAGE_SIZE) break;
+  }
+
+  const maxRevision = buildMaxOutrightRevisionMap(
+    rawGroups.map((entry) => ({ tags: entry.tags })),
+  );
+
+  for (const { formatted, tags, outcomes } of rawGroups) {
+    if (
+      isOutrightGroup(tags) &&
+      isSupersededOutrightInBatch(tags, maxRevision)
+    ) {
+      continue;
+    }
+
+    if (
+      !isOutrightGroup(tags) &&
+      isLegacyMatchGroup(tags, outcomes)
+    ) {
+      continue;
+    }
+
+    records.push(
+      toMarketSearchRecord(
+        String(formatted.groupId ?? ""),
+        formatted.marketQuestion ?? "",
+        tags,
+        formatted.status ?? "Active",
+        locale,
+      ),
+    );
   }
 
   return records;

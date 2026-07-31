@@ -4,7 +4,6 @@ import type { GroupMarketDetail } from "../hooks/useGroupMarkets";
 
 import { useEffect, useMemo, useState } from "react";
 import { Card, CardHeader, CardBody } from "@heroui/card";
-import { Tabs, Tab } from "@heroui/tabs";
 
 import {
   groupMarketsBySection,
@@ -12,17 +11,28 @@ import {
   type MatchMarketSection,
 } from "../utils/marketSections";
 
-import { MarketImage } from "@/features/markets/components/MarketImage";
 import { useBrand } from "@/features/brand";
-import { formatSubMarketLabel } from "@/lib/markets/marketDisplay";
+import {
+  formatSubMarketLabel,
+  getOutcomeTeamLogo,
+} from "@/lib/markets/marketDisplay";
 import { getCommonYesNo } from "@/config/locales";
 import type { FixtureTeams } from "@/lib/markets/marketDisplay";
+import type { MarketTypeId } from "@/config/marketTypes";
+import { TeamLogo } from "@/components/football/TeamLogo";
+import {
+  BinaryMarketTypeSection,
+  isBinaryPairMarketType,
+} from "./overview/BinaryMarketTypeSection";
+
+const PRIMARY_TAB_TYPES = new Set<MarketTypeId>(["1x2", "btts", "ou25"]);
 
 interface GroupOutcomesListProps {
   markets: GroupMarketDetail[];
   selectedMarketId: string | null;
   onSelectMarket: (marketId: string, outcomeIndex?: 0 | 1) => void;
   teams?: FixtureTeams;
+  resolveOutcomeLogo?: (outcomeName: string) => string | null;
 }
 
 function MarketRow({
@@ -33,6 +43,7 @@ function MarketRow({
   displayName,
   yesLabel,
   noLabel,
+  teamLogo,
 }: {
   market: GroupMarketDetail;
   isSelected: boolean;
@@ -41,29 +52,27 @@ function MarketRow({
   displayName: string;
   yesLabel: string;
   noLabel: string;
+  teamLogo?: string | null;
 }) {
   const pct = Math.round(market.yesPrice);
 
   return (
     <div
-      className={`w-full px-4 py-3 flex items-center justify-between gap-3 transition-all ${
+      className={`w-full px-4 py-3.5 flex items-center justify-between gap-4 transition-all ${
         isSelected
           ? "relative z-10 my-0.5 rounded-lg border-2 border-cyan-400 bg-cyan-400/15 shadow-[0_0_16px_rgba(34,211,238,0.2)]"
-          : "border-b border-default-100 last:border-b-0 hover:bg-default-100"
+          : "border-b border-default-100/50 last:border-b-0 hover:bg-default-100/40"
       }`}
     >
       <button
-        className="flex items-center gap-3 flex-1 min-w-0 text-left"
+        className="flex flex-1 min-w-0 items-center gap-3.5 text-left"
         type="button"
         onClick={onSelect}
       >
-        <MarketImage
-          metadataURI={market.metadataURI}
-          name={displayName}
-          showFallback
-          size="sm"
-        />
-        <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+        {teamLogo ?
+          <TeamLogo className="shrink-0" name={displayName} size="row" src={teamLogo} />
+        : null}
+        <div className="flex flex-col gap-0.5 min-w-0">
           <span
             className={`text-sm truncate ${
               isSelected ? "font-semibold text-cyan-300" : "font-medium"
@@ -114,6 +123,7 @@ function SectionBlock({
   teams,
   yesLabel,
   noLabel,
+  resolveOutcomeLogo,
 }: {
   section: MatchMarketSection;
   selectedMarketId: string | null;
@@ -122,23 +132,91 @@ function SectionBlock({
   teams?: FixtureTeams;
   yesLabel: string;
   noLabel: string;
+  resolveOutcomeLogo?: (outcomeName: string) => string | null;
 }) {
+  if (isBinaryPairMarketType(section.id)) {
+    return (
+      <BinaryMarketTypeSection
+        locale={locale}
+        marketType={section.id}
+        markets={section.markets}
+        selectedMarketId={selectedMarketId}
+        onSelectMarket={onSelectMarket}
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col">
-      {section.markets.map((market) => (
-        <MarketRow
-          key={market.marketId}
-          displayName={formatSubMarketLabel(market.name, locale, teams)}
-          isSelected={market.marketId === selectedMarketId}
-          market={market}
-          noLabel={noLabel}
-          yesLabel={yesLabel}
-          onSelect={() => onSelectMarket(market.marketId, 0)}
-          onSelectOutcome={(outcomeIndex) =>
-            onSelectMarket(market.marketId, outcomeIndex)
-          }
-        />
-      ))}
+      {section.markets.map((market) => {
+        const displayName = formatSubMarketLabel(market.name, locale, teams);
+
+        return (
+          <MarketRow
+            key={market.marketId}
+            displayName={displayName}
+            isSelected={market.marketId === selectedMarketId}
+            market={market}
+            noLabel={noLabel}
+            teamLogo={
+              getOutcomeTeamLogo(
+                market.marketType,
+                market.outcomeKey,
+                teams,
+              ) ??
+              resolveOutcomeLogo?.(market.name) ??
+              resolveOutcomeLogo?.(displayName) ??
+              null
+            }
+            yesLabel={yesLabel}
+            onSelect={() => onSelectMarket(market.marketId, 0)}
+            onSelectOutcome={(outcomeIndex) =>
+              onSelectMarket(market.marketId, outcomeIndex)
+            }
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+function MarketTypeTabBar({
+  sections,
+  activeTab,
+  onChange,
+}: {
+  sections: MatchMarketSection[];
+  activeTab: string;
+  onChange: (sectionId: string) => void;
+}) {
+  return (
+    <div
+      className="flex gap-1 overflow-x-auto px-4 pt-3 pb-2 border-b border-default-100 [scrollbar-width:thin]"
+      role="tablist"
+      aria-label="Match market categories"
+    >
+      {sections.map((section) => {
+        const isActive = section.id === activeTab;
+        const isPrimary =
+          section.id !== "other" && PRIMARY_TAB_TYPES.has(section.id);
+
+        return (
+          <button
+            key={section.id}
+            aria-selected={isActive}
+            className={`shrink-0 rounded-lg px-3 py-1.5 text-sm transition-colors whitespace-nowrap ${
+              isActive
+                ? "bg-primary/15 text-primary font-semibold shadow-sm"
+                : "text-default-500 hover:bg-default-100 hover:text-foreground"
+            } ${isPrimary && !isActive ? "font-medium" : ""}`}
+            role="tab"
+            type="button"
+            onClick={() => onChange(section.id)}
+          >
+            {section.label}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -148,6 +226,7 @@ export function GroupOutcomesList({
   selectedMarketId,
   onSelectMarket,
   teams,
+  resolveOutcomeLogo,
 }: GroupOutcomesListProps) {
   const { brandId, locale } = useBrand();
   const { yes: yesLabel, no: noLabel } = getCommonYesNo(locale);
@@ -157,8 +236,9 @@ export function GroupOutcomesList({
         brandId,
         locale,
         forMatchDetail: true,
+        allowOutrightOutcomes: Boolean(resolveOutcomeLogo),
       }),
-    [markets, brandId, locale],
+    [markets, brandId, locale, resolveOutcomeLogo],
   );
   const placeholders = markets.filter((market) => market.isPlaceholder);
   const useTabs = sections.length > 1;
@@ -173,6 +253,9 @@ export function GroupOutcomesList({
       setActiveTab(selectedSectionId);
     }
   }, [selectedSectionId]);
+
+  const activeSection =
+    sections.find((section) => section.id === activeTab) ?? sections[0];
 
   const cardTitle =
     sections.length === 1 ? sections[0].label : "Match Markets";
@@ -190,36 +273,32 @@ export function GroupOutcomesList({
             No active markets in this group yet.
           </div>
         ) : useTabs ? (
-          <Tabs
-            aria-label="Match market categories"
-            classNames={{
-              tabList: "px-4 pt-2 flex-wrap",
-              panel: "p-0",
-            }}
-            selectedKey={activeTab ?? sections[0]?.id}
-            variant="underlined"
-            onSelectionChange={(key) => setActiveTab(String(key))}
-          >
-            {sections.map((section) => (
-              <Tab key={section.id} title={section.label}>
-                <SectionBlock
-                  locale={locale}
-                  noLabel={noLabel}
-                  section={section}
-                  selectedMarketId={selectedMarketId}
-                  teams={teams}
-                  yesLabel={yesLabel}
-                  onSelectMarket={onSelectMarket}
-                />
-              </Tab>
-            ))}
-          </Tabs>
+          <>
+            <MarketTypeTabBar
+              activeTab={activeTab ?? sections[0].id}
+              sections={sections}
+              onChange={setActiveTab}
+            />
+            {activeSection && (
+              <SectionBlock
+                locale={locale}
+                noLabel={noLabel}
+                resolveOutcomeLogo={resolveOutcomeLogo}
+                section={activeSection}
+                selectedMarketId={selectedMarketId}
+                teams={teams}
+                yesLabel={yesLabel}
+                onSelectMarket={onSelectMarket}
+              />
+            )}
+          </>
         ) : (
           sections.map((section) => (
             <SectionBlock
               key={section.id}
               locale={locale}
               noLabel={noLabel}
+              resolveOutcomeLogo={resolveOutcomeLogo}
               section={section}
               selectedMarketId={selectedMarketId}
               teams={teams}

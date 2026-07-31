@@ -20,6 +20,15 @@ export function encodeFixtureMeta(meta: FixtureGroupMeta): string {
   return `${META_PREFIX}${JSON.stringify(meta)}-->`;
 }
 
+/** Remove embedded fixture-meta HTML comment from user-facing copy. */
+export function stripFixtureMeta(text: string): string {
+  const start = text.indexOf(META_PREFIX);
+
+  if (start === -1) return text.trim();
+
+  return text.slice(0, start).trim();
+}
+
 export function decodeFixtureMeta(text: string): FixtureGroupMeta | null {
   const start = text.indexOf(META_PREFIX);
   if (start === -1) return null;

@@ -1,6 +1,6 @@
 import type { BrandId } from "./brandRouting";
 import { buildCategoryPath } from "./brandRouting";
-import { BRAND_MARKETS } from "./brandMarkets";
+import { BRAND_MARKETS, getCategoryNavMarketTypes } from "./brandMarkets";
 import type { MarketTypeId } from "./marketTypes";
 import { getMarketTitle, getMarketTabLabel } from "./marketTypes";
 import { getLeagueName, LEAGUE_BY_SLUG } from "./leagues";
@@ -36,7 +36,8 @@ export function getCategoryNavGroups(
   brandId: BrandId,
   locale: Locale,
 ): CategoryNavLeagueGroup[] {
-  const { visibleLeagues, categoryNavMarketTypes } = BRAND_MARKETS[brandId];
+  const { visibleLeagues } = BRAND_MARKETS[brandId];
+  const categoryNavMarketTypes = getCategoryNavMarketTypes(brandId);
 
   return visibleLeagues
     .filter((slug) => LEAGUE_BY_SLUG[slug])

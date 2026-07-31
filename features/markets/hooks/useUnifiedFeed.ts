@@ -1,16 +1,10 @@
 "use client";
 
-import type { Market, FormattedMarket, UnifiedFeedItem } from "../types";
-import type {
-  FormattedMarketGroup,
-  FormattedGroupOutcome,
-  MarketGroupStatus,
-} from "@/features/market-groups/types";
+import type { UnifiedFeedItem } from "../types";
 
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { parseAncillaryData } from "@oddmaki-protocol/sdk";
 
-import { calculateMarketPrices, formatVolume } from "../utils/formatting";
+import { formatMarketGroup, formatStandaloneMarket } from "../utils/formatMarketGroup";
 import { sortUnifiedFeedItems } from "../utils/kickoffSort";
 
 import { useOddMakiClient } from "@/lib/oddmaki/hooks";
@@ -19,69 +13,6 @@ import { queryKeys } from "@/lib/oddmaki/queryKeys";
 import { formatPriceMarketSeries } from "@/features/price-market-series";
 
 export const UNIFIED_FEED_PAGE_SIZE = 50;
-
-/**
- * Transform raw standalone market to FormattedMarket
- * (same logic as useMarkets.ts formatMarket)
- */
-function formatStandaloneMarket(market: Market): FormattedMarket {
-  const { yesPrice, noPrice } = calculateMarketPrices(market);
-  const { title } = parseAncillaryData(market.question);
-
-  return {
-    ...market,
-    question: title,
-    yesPrice,
-    noPrice,
-    volumeFormatted: formatVolume(market.totalVolume || "0", 6),
-  };
-}
-
-/**
- * Transform SDK-formatted group data into FormattedMarketGroup
- */
-
-function formatGroup(sdkFormatted: any, rawGroup: any): FormattedMarketGroup {
-  const outcomes: FormattedGroupOutcome[] = (sdkFormatted.outcomes || []).map(
-    (o: any) => ({
-      marketId: o.marketId,
-      name: o.name,
-      question: o.question || "",
-      probability: o.probability ? parseFloat(o.probability) * 100 : 0,
-      status: o.status,
-      totalVolume: o.totalVolume || "0",
-      volumeFormatted: formatVolume(o.totalVolume || "0", 6),
-      isPlaceholder: false,
-    }),
-  );
-
-  // Sum volume across all child markets
-  const totalVolume = (rawGroup.markets || [])
-    .reduce(
-      (sum: number, m: { totalVolume?: string }) =>
-        sum + parseFloat(m.totalVolume || "0"),
-      0,
-    )
-    .toString();
-
-  return {
-    groupId: sdkFormatted.groupId,
-    venueId: rawGroup.venue?.venueId ?? null,
-    marketQuestion: sdkFormatted.marketQuestion,
-    status: sdkFormatted.status as MarketGroupStatus,
-    totalMarkets: sdkFormatted.totalMarkets || "0",
-    activeMarketCount: sdkFormatted.activeMarketCount || "0",
-    resolvedMarketId: sdkFormatted.resolvedMarketId || "0",
-    tags: rawGroup.tags || [],
-    createdAt: sdkFormatted.createdAt || "0",
-    activatedAt: rawGroup.activatedAt || null,
-    resolvedAt: rawGroup.resolvedAt || null,
-    creator: rawGroup.creator?.address || "",
-    outcomes,
-    totalVolume,
-    volumeFormatted: formatVolume(totalVolume, 6),
-  };
-}
 
 type UnifiedFeedPage = {
   items: UnifiedFeedItem[];
@@ -114,7 +45,7 @@ export function useUnifiedFeed(sortBy: "created" | "volume" = "created") {
           } else {
             const formatted = client.public.formatMarketGroupForDisplay(item);
 
-            return { type: "group", data: formatGroup(formatted, item) };
+            return { type: "group", data: formatMarketGroup(formatted, item) };
           }
         }),
         sortBy,

@@ -9,6 +9,7 @@ import {
   formatMarketTypeTabLabel,
   inferMarketTypeFromSubMarketName,
 } from "@/lib/markets/marketDisplay";
+import { isCanonicalSubMarketName } from "@/lib/markets/marketFilters";
 
 export interface MatchMarketSection {
   id: MarketTypeId | "other";
@@ -21,6 +22,8 @@ export interface GroupMarketsBySectionOptions {
   brandId?: BrandId;
   /** Match detail shows every on-chain sub-market, not brand nav subset. */
   forMatchDetail?: boolean;
+  /** Plain team-name outcomes (season winner / outright markets). */
+  allowOutrightOutcomes?: boolean;
 }
 
 export function categorizeGroupMarket(
@@ -57,7 +60,19 @@ export function groupMarketsBySection(
   const locale = options.locale ?? "en";
   const brandId = options.brandId ?? "polyfootball";
   const forMatchDetail = options.forMatchDetail ?? false;
-  const activeMarkets = markets.filter((market) => !market.isPlaceholder);
+  const allowOutrightOutcomes = options.allowOutrightOutcomes ?? false;
+  const activeMarkets = markets.filter((market) => {
+    if (market.isPlaceholder) return false;
+    if (
+      forMatchDetail &&
+      !isCanonicalSubMarketName(market.name) &&
+      !allowOutrightOutcomes
+    ) {
+      return false;
+    }
+
+    return true;
+  });
   const buckets = new Map<MarketTypeId | "other", GroupMarketDetail[]>();
 
   for (const market of activeMarkets) {
@@ -73,6 +88,7 @@ export function groupMarketsBySection(
 
     if (
       section === "other" &&
+      !allowOutrightOutcomes &&
       !market.name.includes(" · ") &&
       !market.name.includes(":")
     ) {
@@ -102,7 +118,7 @@ export function groupMarketsBySection(
   if (other?.length) {
     sections.push({
       id: "other",
-      label: "Markets",
+      label: allowOutrightOutcomes ? "Outright winner" : "Markets",
       markets: sortMarketsWithinSection("other", other),
     });
   }

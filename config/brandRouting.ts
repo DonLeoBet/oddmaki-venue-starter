@@ -8,6 +8,8 @@ export interface BrandRoutingConfig {
   categoryPathOrder: "league-first" | "market-first";
   leagueSlugMappings: Record<string, string>;
   marketTypeSlugMappings: Record<MarketTypeId, string>;
+  /** Final segment for match group SEO pages, e.g. /{league}/{match}/markets */
+  matchMarketsSegment: string;
 }
 
 const SHARED_LEAGUE_SLUGS: Record<string, string> = {
@@ -36,6 +38,7 @@ export const FUTURE_BRAND_ROUTING_EXAMPLES: Record<
     basePath: "",
     categoryPathOrder: "league-first",
     leagueSlugMappings: SHARED_LEAGUE_SLUGS,
+    matchMarketsSegment: "markets",
     marketTypeSlugMappings: {
       "1x2": "1x2",
       btts: "btts",
@@ -53,6 +56,7 @@ export const BRAND_ROUTING: Record<BrandId, BrandRoutingConfig> = {
     basePath: "",
     categoryPathOrder: "league-first",
     leagueSlugMappings: SHARED_LEAGUE_SLUGS,
+    matchMarketsSegment: "markets",
     marketTypeSlugMappings: {
       "1x2": "1x2",
       btts: "btts",
@@ -67,6 +71,7 @@ export const BRAND_ROUTING: Record<BrandId, BrandRoutingConfig> = {
     basePath: "/predictions",
     categoryPathOrder: "league-first",
     leagueSlugMappings: SHARED_LEAGUE_SLUGS,
+    matchMarketsSegment: "markets",
     marketTypeSlugMappings: {
       "1x2": "match-result",
       btts: "both-teams-to-score",
@@ -81,6 +86,7 @@ export const BRAND_ROUTING: Record<BrandId, BrandRoutingConfig> = {
     basePath: "/glazenbol",
     categoryPathOrder: "market-first",
     leagueSlugMappings: SHARED_LEAGUE_SLUGS,
+    matchMarketsSegment: "markets",
     marketTypeSlugMappings: {
       "1x2": "1x2",
       btts: "beide-scoren",
@@ -148,4 +154,24 @@ export function buildCategoryPath(
     return `${base}/${league}/${mtSlug}`;
   }
   return `/markets/${league}/${mtSlug}`;
+}
+
+/** SEO-friendly match group page, e.g. /premier-league/arsenal-vs-coventry/markets */
+export function buildMatchGroupPath(
+  brandId: BrandId,
+  leagueSlug: string,
+  matchSlug: string,
+): string {
+  const routing = BRAND_ROUTING[brandId];
+  const league = routing.leagueSlugMappings[leagueSlug] ?? leagueSlug;
+  const segment = routing.matchMarketsSegment;
+  const base = routing.basePath.replace(/\/$/, "");
+  const path = `${league}/${matchSlug}/${segment}`;
+
+  return base ? `${base}/${path}` : `/${path}`;
+}
+
+/** Legacy internal route — kept for backwards compatibility. */
+export function buildLegacyMatchGroupPath(groupId: string): string {
+  return `/market/multi/${groupId}`;
 }

@@ -1,5 +1,7 @@
+import type { BrandId } from "@/config/brandRouting";
 import { getLeagueName, parseLeagueSlugFromTags } from "@/config/leagues";
 import type { Locale } from "@/config/locales";
+import { getMatchGroupHref } from "@/features/market-groups/utils/matchGroupPaths";
 import { fixtureIdFromTag, isFixtureTag } from "@/lib/football/map-fixture-to-market-group";
 import { parseFixtureTitle } from "@/lib/football/fixture-metadata";
 import { KICKOFF_TAG_PREFIX } from "@/lib/football/constants";
@@ -140,6 +142,8 @@ export function filterMarketSearch(
   query: string,
   records: MarketSearchRecord[],
   limit = 12,
+  brandId?: BrandId,
+  locale: Locale = "en",
 ): MarketSearchHit[] {
   const q = query.trim();
 
@@ -149,7 +153,19 @@ export function filterMarketSearch(
     .map((record) => ({
       ...record,
       score: scoreMarketSearch(q, record),
-      href: `/market/multi/${record.groupId}`,
+      href:
+        brandId ?
+          getMatchGroupHref(
+            brandId,
+            {
+              groupId: record.groupId,
+              marketQuestion: record.title,
+              leagueSlug: record.leagueSlug,
+              tags: record.tags,
+            },
+            locale,
+          )
+        : `/market/multi/${record.groupId}`,
       subtitle: buildSearchSubtitle(record),
     }))
     .filter((hit) => hit.score > 0)

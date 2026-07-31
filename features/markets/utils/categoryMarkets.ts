@@ -1,10 +1,15 @@
 "use client";
 
 import type { MarketTypeId } from "@/config/marketTypes";
-import { inferMarketTypeFromName } from "@/config/marketTypes";
-import { leagueSlugTag, parseLeagueSlugFromTags } from "@/config/leagues";
 import { parseFixtureTitle } from "@/lib/football/fixture-metadata";
+import { parseSubMarketIdentity } from "@/lib/markets/marketDisplay";
 import type { FormattedMarketGroup } from "@/features/market-groups/types";
+import {
+  filterCanonicalSubMarkets,
+  groupMatchesLeagueSlug,
+  isNewTaxonomyMatchGroup,
+  isOutrightGroup,
+} from "@/lib/markets/marketFilters";
 
 export interface CategoryMarketRow {
   groupId: string;
@@ -27,21 +32,20 @@ export function filterGroupForCategory(
   marketType: MarketTypeId,
 ): CategoryMarketRow | null {
   const tags = group.tags ?? [];
-  const tagSlug = parseLeagueSlugFromTags(tags);
-  if (tagSlug !== leagueSlug && !tags.includes(leagueSlugTag(leagueSlug))) {
-    return null;
-  }
+
+  if (isOutrightGroup(tags)) return null;
+  if (!groupMatchesLeagueSlug(tags, leagueSlug)) return null;
+  if (!isNewTaxonomyMatchGroup(tags, group.outcomes)) return null;
 
   const parsed = parseFixtureTitle(group.marketQuestion);
   const home = parsed?.home ?? "Home";
   const away = parsed?.away ?? "Away";
-  const kickoffTag = tags.find((t) => t.startsWith("kickoff-"));
+  const kickoffTag = tags.find((tag) => tag.startsWith("kickoff-"));
   const kickoffUnix = kickoffTag ? Number(kickoffTag.slice(8)) : 0;
 
-  const matchingMarkets = group.outcomes.filter((o) => {
-    if (o.isPlaceholder) return false;
-    return inferMarketTypeFromName(o.name) === marketType;
-  });
+  const matchingMarkets = filterCanonicalSubMarkets(group.outcomes).filter(
+    (outcome) => parseSubMarketIdentity(outcome.name)?.marketType === marketType,
+  );
 
   if (matchingMarkets.length === 0) return null;
 
@@ -52,11 +56,11 @@ export function filterGroupForCategory(
     away,
     kickoffUnix,
     leagueSlug,
-    markets: matchingMarkets.map((o) => ({
-      marketId: o.marketId,
-      name: o.name,
-      yesPrice: o.probability,
-      noPrice: Math.max(0, 100 - o.probability),
+    markets: matchingMarkets.map((outcome) => ({
+      marketId: outcome.marketId,
+      name: outcome.name,
+      yesPrice: outcome.probability,
+      noPrice: Math.max(0, 100 - outcome.probability),
     })),
   };
 }

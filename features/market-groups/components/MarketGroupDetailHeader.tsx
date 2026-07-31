@@ -7,18 +7,18 @@ import { Chip } from "@heroui/chip";
 import { useRouter } from "next/navigation";
 
 import { ArrowBackIcon } from "@/components/icons";
+import { MatchTeamLogos } from "@/components/football/TeamLogo";
 import { MarketSettingsButton } from "@/features/market-settings";
 import { useBrand } from "@/features/brand";
 import { buildMatchSeo } from "@/config/brandSeo";
 import { getLeagueName, parseLeagueSlugFromTags } from "@/config/leagues";
-import { formatSearchKickoff } from "@/features/markets/utils/matchMarketSearch";
-import { KICKOFF_TAG_PREFIX } from "@/lib/football/constants";
+import { formatKickoffFromGroup } from "@/lib/football/kickoff-display";
+import type { FixtureTeams } from "@/lib/markets/marketDisplay";
 
 interface MarketGroupDetailHeaderProps {
   group: FormattedMarketGroup;
   selectedMarketId: string | null;
-  home?: string;
-  away?: string;
+  teams?: FixtureTeams;
 }
 
 const STATUS_COLOR: Record<
@@ -30,30 +30,23 @@ const STATUS_COLOR: Record<
   Resolved: "default",
 };
 
-function kickoffFromTags(tags: string[]): string {
-  const tag = tags.find((entry) => entry.startsWith(KICKOFF_TAG_PREFIX));
-
-  if (!tag) return "";
-
-  const unix = Number(tag.slice(KICKOFF_TAG_PREFIX.length));
-
-  return Number.isFinite(unix) ? formatSearchKickoff(unix) : "";
+function kickoffFromTags(tags: string[], title?: string): string {
+  return formatKickoffFromGroup(tags, title);
 }
 
 export function MarketGroupDetailHeader({
   group,
   selectedMarketId,
-  home,
-  away,
+  teams,
 }: MarketGroupDetailHeaderProps) {
   const router = useRouter();
   const { brandId, brandName, locale } = useBrand();
   const leagueSlug = parseLeagueSlugFromTags(group.tags ?? []);
   const leagueName = leagueSlug ? getLeagueName(leagueSlug, locale) : null;
-  const kickoff = kickoffFromTags(group.tags ?? []);
+  const kickoff = kickoffFromTags(group.tags ?? [], group.marketQuestion);
   const matchSeo =
-    home && away ?
-      buildMatchSeo(brandId, brandName, home, away)
+    teams ?
+      buildMatchSeo(brandId, brandName, teams.home.name, teams.away.name)
     : null;
   const title = matchSeo?.h1 ?? group.marketQuestion;
 
@@ -71,8 +64,21 @@ export function MarketGroupDetailHeader({
           >
             <ArrowBackIcon size={20} />
           </Button>
-          <div className="flex flex-col gap-2 min-w-0">
-            <h1 className="text-2xl font-bold">{title}</h1>
+          <div className="flex flex-col gap-3 min-w-0">
+            {teams ? (
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <MatchTeamLogos
+                  away={teams.away}
+                  home={teams.home}
+                  size="md"
+                />
+                <h1 className="text-2xl font-bold min-w-0">
+                  {teams.home.name} vs {teams.away.name}
+                </h1>
+              </div>
+            ) : (
+              <h1 className="text-2xl font-bold">{title}</h1>
+            )}
             {(leagueName || kickoff) && (
               <div className="flex flex-wrap items-center gap-2">
                 {leagueName && (

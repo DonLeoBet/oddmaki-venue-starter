@@ -1,210 +1,61 @@
-"use client";
+import type { Metadata } from "next";
+import { permanentRedirect } from "next/navigation";
+import { Suspense } from "react";
 
-import { Suspense, use, useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
-
-import { useMarketGroupDetail } from "@/features/market-groups/hooks/useMarketGroupDetail";
-import { useGroupMarkets } from "@/features/market-groups/hooks/useGroupMarkets";
-import { getVenueId } from "@/config/venue.config";
-import { MarketGroupDetailHeader } from "@/features/market-groups/components/MarketGroupDetailHeader";
-import { GroupOutcomesList } from "@/features/market-groups/components/GroupOutcomesList";
-import { MatchMarketsDebugPanel } from "@/features/market-groups/components/MatchMarketsDebugPanel";
+import { MarketGroupDetailView } from "@/features/market-groups/components/MarketGroupDetailView";
 import { MarketGroupDetailSkeleton } from "@/features/market-groups/components/MarketGroupDetailSkeleton";
-import { OrderbookPanel } from "@/features/orderbook/components/OrderbookPanel";
-import { UnifiedTradingPanel } from "@/features/trading/components/UnifiedTradingPanel";
-import { UserOrdersPanel } from "@/features/trading/components/UserOrdersPanel";
-import { MatchOrdersButton } from "@/features/trading/components/MatchOrdersButton";
-import { ResolutionPanel } from "@/features/resolution/components/ResolutionPanel";
-import { ResolvedOutcomeCard } from "@/features/resolution/components/ResolvedOutcomeCard";
-import { RedeemPanel } from "@/features/resolution/components/RedeemPanel";
-import { MarketDescription } from "@/features/market-detail/components/MarketDescription";
-import { MarketDetailTabs } from "@/features/market-detail/components/MarketDetailTabs";
-import { PriceChartPanel } from "@/features/price-chart";
-import { parseFixtureTitle } from "@/lib/football/fixture-metadata";
-import { formatSubMarketLabel } from "@/lib/markets/marketDisplay";
-import { useBrand } from "@/features/brand";
+import { BRAND_CONFIG } from "@/config/brand.config";
+import { buildMatchSeo } from "@/config/brandSeo";
+import {
+  resolveMatchGroupTitleByGroupId,
+  resolveMatchSeoPathByGroupId,
+} from "@/lib/markets/resolveMatchSeoPath";
+import { resolveBrandId } from "@/config/brandRouting";
 
-export default function MarketGroupDetailPage({
-  params,
-}: {
+interface PageProps {
   params: Promise<{ id: string }>;
-}) {
-  return (
-    <Suspense fallback={<MarketGroupDetailSkeleton />}>
-      <MarketGroupDetailPageContent params={params} />
-    </Suspense>
-  );
 }
 
-function MarketGroupDetailPageContent({
+export async function generateMetadata({
   params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = use(params);
-  const searchParams = useSearchParams();
-  const showDebug =
-    process.env.NODE_ENV === "development" &&
-    searchParams.get("debug") === "1";
-  const {
-    data: group,
-    isLoading: groupLoading,
-    error,
-  } = useMarketGroupDetail(id);
-  const { data: markets, isLoading: marketsLoading } = useGroupMarkets(id);
-  const { locale } = useBrand();
-  const [selectedMarketId, setSelectedMarketId] = useState<string | null>(null);
-  const [selectedOutcomeIndex, setSelectedOutcomeIndex] = useState<0 | 1>(0);
+}: PageProps): Promise<Metadata> {
+  const { id } = await params;
+  const brandId = resolveBrandId(BRAND_CONFIG.id);
+  const teams = await resolveMatchGroupTitleByGroupId(id);
+  const seoPath = await resolveMatchSeoPathByGroupId(id);
 
-  const handleSelectMarket = (marketId: string, outcomeIndex: 0 | 1 = 0) => {
-    setSelectedMarketId(marketId);
-    setSelectedOutcomeIndex(outcomeIndex);
+  if (!teams) {
+    return { title: "Match Markets" };
+  }
+
+  const seo = buildMatchSeo(
+    brandId,
+    BRAND_CONFIG.name,
+    teams.home,
+    teams.away,
+  );
+
+  return {
+    title: seo.title,
+    description: seo.description,
+    alternates:
+      seoPath ?
+        { canonical: `https://${BRAND_CONFIG.domain}${seoPath}` }
+      : undefined,
   };
+}
 
-  // Auto-select first active (non-placeholder) market when data loads
-  useEffect(() => {
-    if (markets && markets.length > 0 && !selectedMarketId) {
-      const firstActive = markets.find(
-        (m) => !m.isPlaceholder && m.status === "Active",
-      );
+export default async function LegacyMarketGroupPage({ params }: PageProps) {
+  const { id } = await params;
+  const seoPath = await resolveMatchSeoPathByGroupId(id);
 
-      if (firstActive) {
-        setSelectedMarketId(firstActive.marketId);
-      } else {
-        setSelectedMarketId(markets[0].marketId);
-      }
-    }
-  }, [markets, selectedMarketId]);
-
-  if (groupLoading || marketsLoading) {
-    return <MarketGroupDetailSkeleton />;
+  if (seoPath) {
+    permanentRedirect(seoPath);
   }
-
-  // Cross-venue guard: the subgraph returns a group by id regardless of venue.
-  // Reject groups that don't belong to this app's configured venue (treated as
-  // not-found so we don't reveal foreign groups).
-  const configuredVenueId = getVenueId();
-  const foreignGroup =
-    !!group &&
-    configuredVenueId !== undefined &&
-    group.venueId != null &&
-    BigInt(group.venueId) !== configuredVenueId;
-
-  if (error || !group || foreignGroup) {
-    return (
-      <section className="flex flex-col gap-6 pt-4 pb-8 md:pt-6 md:pb-10">
-        <div className="text-center py-12">
-          <p className="text-default-500">
-            {error ? "Failed to load market group" : "Market group not found"}
-          </p>
-        </div>
-      </section>
-    );
-  }
-
-  const fixtureTeams = parseFixtureTitle(group.marketQuestion) ?? undefined;
-  const selectedMarket = markets?.find((m) => m.marketId === selectedMarketId);
-  const selectedMarketLabel =
-    selectedMarket ?
-      formatSubMarketLabel(selectedMarket.name, locale, fixtureTeams)
-    : undefined;
 
   return (
-    <section className="flex flex-col gap-6 pt-4 pb-8 md:pt-6 md:pb-10">
-      <MarketGroupDetailHeader
-        away={fixtureTeams?.away}
-        group={group}
-        home={fixtureTeams?.home}
-        selectedMarketId={selectedMarketId}
-      />
-
-      {showDebug && (
-        <MatchMarketsDebugPanel groupTags={group.tags} markets={markets || []} />
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-[1fr_338px] gap-4 items-start">
-        {/* Left column */}
-        <div className="flex flex-col gap-4">
-          <GroupOutcomesList
-            markets={markets || []}
-            selectedMarketId={selectedMarketId}
-            teams={fixtureTeams ?? undefined}
-            onSelectMarket={handleSelectMarket}
-          />
-
-          {group.status !== "Draft" && selectedMarket && (
-            <>
-              <PriceChartPanel
-                lastPriceTick={selectedMarket.lastPriceTick_0}
-                marketId={selectedMarket.marketId}
-                outcomes={selectedMarket.outcomes}
-                tickSize={selectedMarket.tickSize}
-              />
-              <OrderbookPanel
-                marketId={selectedMarket.marketId}
-                outcomes={selectedMarket.outcomes}
-                tickSize={selectedMarket.tickSize}
-              />
-              <MatchOrdersButton
-                marketId={selectedMarket.marketId}
-                tickSize={selectedMarket.tickSize}
-              />
-              <MarketDescription description={selectedMarket.description} />
-              <UserOrdersPanel
-                isResolved={selectedMarket.status === "Resolved"}
-                marketId={selectedMarket.marketId}
-                outcomes={selectedMarket.outcomes}
-                tickSize={selectedMarket.tickSize}
-              />
-              <MarketDetailTabs
-                marketId={selectedMarket.marketId}
-                noPrice={selectedMarket.noPrice}
-                outcomes={selectedMarket.outcomes}
-                tickSize={selectedMarket.tickSize}
-                yesPrice={selectedMarket.yesPrice}
-              />
-            </>
-          )}
-        </div>
-
-        {/* Right column (sticky) */}
-        <div className="flex flex-col gap-4 md:sticky md:top-4">
-          {group.status !== "Draft" && selectedMarket && (
-            <>
-              {selectedMarket.status === "Resolved" ? (
-                <ResolvedOutcomeCard
-                  outcomes={selectedMarket.outcomes}
-                  resolvedOutcome={selectedMarket.resolvedOutcome}
-                />
-              ) : (
-                <UnifiedTradingPanel
-                  key={selectedMarket.marketId}
-                  initialOutcomeIndex={selectedOutcomeIndex}
-                  marketId={selectedMarket.marketId}
-                  marketLabel={selectedMarketLabel ?? selectedMarket.name}
-                  metadataURI={selectedMarket.metadataURI}
-                  noPrice={selectedMarket.noPrice}
-                  outcomes={selectedMarket.outcomes}
-                  tickSize={selectedMarket.tickSize}
-                  yesPrice={selectedMarket.yesPrice}
-                />
-              )}
-              {selectedMarket.status === "Resolved" ? (
-                <RedeemPanel
-                  standalone
-                  marketId={selectedMarket.marketId}
-                  outcomes={selectedMarket.outcomes}
-                />
-              ) : (
-                <ResolutionPanel
-                  marketId={selectedMarket.marketId}
-                  outcomes={selectedMarket.outcomes}
-                />
-              )}
-            </>
-          )}
-        </div>
-      </div>
-    </section>
+    <Suspense fallback={<MarketGroupDetailSkeleton />}>
+      <MarketGroupDetailView groupId={id} />
+    </Suspense>
   );
 }

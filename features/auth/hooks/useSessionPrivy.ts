@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { useSetActiveWallet } from "@privy-io/wagmi";
 import { useAccount, useDisconnect } from "wagmi";
@@ -16,22 +16,48 @@ export function useSessionPrivy(): SessionState {
     usePrivy();
   const { ready: walletsReady, wallets } = useWallets();
   const { setActiveWallet } = useSetActiveWallet();
-  const { address, isConnected, isConnecting, isReconnecting } = useAccount();
+  const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
+  const activationKeyRef = useRef<string | null>(null);
 
-  useEffect(() => {
-    if (!privyReady || !walletsReady || wallets.length === 0) return;
-    if (address) return;
+  const primaryWalletKey = useMemo(() => {
+    if (!walletsReady || wallets.length === 0) return null;
 
     const embedded = wallets.find((w) => w.walletClientType === "privy");
     const target = embedded ?? wallets[0];
 
-    if (target) {
-      void setActiveWallet(target).catch(() => {
-        // Wallet may not be ready for activation yet (e.g. mid-connect on mobile).
-      });
+    return target?.address ?? `${target?.walletClientType ?? "wallet"}-0`;
+  }, [walletsReady, wallets]);
+
+  useEffect(() => {
+    if (!privyReady || !walletsReady || !primaryWalletKey) return;
+
+    if (address) {
+      activationKeyRef.current = null;
+
+      return;
     }
-  }, [privyReady, walletsReady, wallets, address, setActiveWallet]);
+
+    if (activationKeyRef.current === primaryWalletKey) return;
+
+    const embedded = wallets.find((w) => w.walletClientType === "privy");
+    const target = embedded ?? wallets[0];
+
+    if (!target) return;
+
+    activationKeyRef.current = primaryWalletKey;
+
+    void setActiveWallet(target).catch(() => {
+      activationKeyRef.current = null;
+    });
+  }, [
+    privyReady,
+    walletsReady,
+    primaryWalletKey,
+    address,
+    setActiveWallet,
+    wallets,
+  ]);
 
   const walletFallback = wallets.find((w) => w.address)?.address as
     | `0x${string}`
@@ -51,9 +77,13 @@ export function useSessionPrivy(): SessionState {
   const isLoggedIn =
     hasWallet && (authenticated || isConnected || hasPrivyWallet);
 
-  const isReady = privyReady && walletsReady && !isConnecting && !isReconnecting;
+  // Privy SDK init only — don't block UI on wagmi connect/reconnect. Address
+  // resolves from Privy wallets while wagmi syncs in the background.
+  const isReady = privyReady && walletsReady;
 
   const logout = useCallback(async () => {
+    activationKeyRef.current = null;
+
     try {
       if (authenticated) await privyLogout();
     } finally {

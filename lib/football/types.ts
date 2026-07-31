@@ -14,6 +14,7 @@ export interface ApiFootballFixture {
 export interface ApiFootballTeam {
   id: number;
   name: string;
+  logo?: string;
 }
 
 export interface ApiFootballLeague {

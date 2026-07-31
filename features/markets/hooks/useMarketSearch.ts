@@ -4,11 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 
 import { filterMarketSearch, type MarketSearchHit } from "../utils/matchMarketSearch";
 
+import { useBrand } from "@/features/brand";
 import { useMarketSearchIndex } from "./useMarketSearchIndex";
 
 const DEBOUNCE_MS = 250;
 
 export function useMarketSearch(query: string) {
+  const { brandId, locale } = useBrand();
   const { data: index = [], isLoading, isFetching, error } = useMarketSearchIndex();
   const [debouncedQuery, setDebouncedQuery] = useState(query);
 
@@ -21,8 +23,8 @@ export function useMarketSearch(query: string) {
   }, [query]);
 
   const results = useMemo((): MarketSearchHit[] => {
-    return filterMarketSearch(debouncedQuery, index);
-  }, [debouncedQuery, index]);
+    return filterMarketSearch(debouncedQuery, index, 12, brandId, locale);
+  }, [debouncedQuery, index, brandId, locale]);
 
   const isSearching =
     query.trim().length >= 2 &&

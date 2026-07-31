@@ -5,6 +5,7 @@ import {
   getMarketTabLabel,
 } from "@/config/marketTypes";
 import type { Locale } from "@/config/locales";
+import { getTeamLogo } from "@/lib/football/team-logo";
 
 export interface SubMarketIdentity {
   marketType: MarketTypeId;
@@ -28,6 +29,17 @@ function normalizeLegacySuffix(raw: string): string {
   return LEGACY_SUFFIX_TO_KEY[lower] ?? lower;
 }
 
+export interface FixtureTeamSide {
+  name: string;
+  id?: number;
+  logo?: string | null;
+}
+
+export interface FixtureTeams {
+  home: FixtureTeamSide;
+  away: FixtureTeamSide;
+}
+
 function resolveOutcomeDisplay(
   marketType: MarketTypeId,
   outcomeKey: string,
@@ -35,10 +47,45 @@ function resolveOutcomeDisplay(
   teams?: FixtureTeams,
 ): string {
   if (teams) {
-    if (outcomeKey === "home") return teams.home;
-    if (outcomeKey === "away") return teams.away;
+    if (outcomeKey === "home") return teams.home.name;
+    if (outcomeKey === "away") return teams.away.name;
   }
   return getOutcomeLabel(marketType, outcomeKey, locale);
+}
+
+/** Team crest for team-specific outcome rows (1x2, DNB, Double Chance). */
+export function getOutcomeTeamLogo(
+  marketType: MarketTypeId | null | undefined,
+  outcomeKey: string | null | undefined,
+  teams?: FixtureTeams,
+): string | null {
+  if (!marketType || !outcomeKey || !teams) return null;
+
+  if (marketType === "1x2") {
+    if (outcomeKey === "home") return getTeamLogo(teams.home);
+    if (outcomeKey === "away") return getTeamLogo(teams.away);
+    return null;
+  }
+
+  if (marketType === "dnb") {
+    if (outcomeKey === "home") return getTeamLogo(teams.home);
+    if (outcomeKey === "away") return getTeamLogo(teams.away);
+    return null;
+  }
+
+  if (marketType === "double_chance") {
+    if (outcomeKey === "1x") return getTeamLogo(teams.home);
+    if (outcomeKey === "x2") return getTeamLogo(teams.away);
+    return null;
+  }
+
+  return null;
+}
+
+export function isTeamSpecificMarketType(
+  marketType: MarketTypeId | null | undefined,
+): boolean {
+  return marketType === "1x2" || marketType === "dnb" || marketType === "double_chance";
 }
 
 /**
@@ -72,9 +119,26 @@ export function parseSubMarketIdentity(name: string): SubMarketIdentity | null {
   return null;
 }
 
-export interface FixtureTeams {
-  home: string;
-  away: string;
+/** Compact outcome label for overview/list pages (draw → X, team names for 1X2). */
+export function formatOverviewOutcomeLabel(
+  marketType: MarketTypeId,
+  outcomeKey: string,
+  locale: Locale,
+  teams?: FixtureTeams,
+): string {
+  if (marketType === "1x2" && outcomeKey === "draw") {
+    return "X";
+  }
+
+  if (marketType === "double_chance") {
+    const key = outcomeKey.toLowerCase();
+
+    if (key === "1x") return "1X";
+    if (key === "12") return "12";
+    if (key === "x2") return "X2";
+  }
+
+  return resolveOutcomeDisplay(marketType, outcomeKey, locale, teams);
 }
 
 /** Localized label for one sub-market row (outcome selection). */

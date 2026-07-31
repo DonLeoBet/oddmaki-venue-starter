@@ -1,4 +1,5 @@
 export { MarketGroupCard } from "./MarketGroupCard";
+export { OutrightGroupCard } from "./OutrightGroupCard";
 export { MarketGroupSkeleton } from "./MarketGroupSkeleton";
 export { MarketGroupDetailHeader } from "./MarketGroupDetailHeader";
 export { GroupOutcomesList } from "./GroupOutcomesList";

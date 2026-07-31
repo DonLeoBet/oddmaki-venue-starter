@@ -16,8 +16,11 @@ import { MarketSearchBarShell } from "@/features/markets/components/MarketSearch
 export const Navbar = () => {
   return (
     <HeroUINavbar
-      classNames={{ wrapper: "px-3 sm:px-6 gap-2" }}
-      maxWidth="xl"
+      classNames={{
+        base: "bg-background/95 backdrop-blur-xl",
+        wrapper: "w-full max-w-none px-4 sm:px-6",
+      }}
+      maxWidth="full"
       position="sticky"
     >
       <NavbarContent justify="start">
@@ -28,7 +31,10 @@ export const Navbar = () => {
         </NavbarBrand>
       </NavbarContent>
 
-      <NavbarContent className="hidden md:flex flex-1 max-w-xl" justify="center">
+      <NavbarContent
+        className="hidden md:flex flex-1 max-w-2xl"
+        justify="center"
+      >
         <MarketSearchBarShell />
       </NavbarContent>
 

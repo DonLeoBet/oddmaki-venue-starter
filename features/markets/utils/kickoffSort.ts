@@ -3,9 +3,14 @@ import type { UnifiedFeedItem } from "../types";
 import {
   FIXTURE_TAG_PREFIX,
   KICKOFF_TAG_PREFIX,
-  OUTRIGHT_TAG_PREFIX,
 } from "@/lib/football/constants";
 import { isKickoffOnOrAfterMinDate } from "@/lib/football/fixture-window";
+import {
+  isLegacyMatchGroup,
+  isOutrightGroup,
+  buildMaxOutrightRevisionMap,
+  isSupersededOutrightInBatch,
+} from "@/lib/markets/marketFilters";
 
 const MATCH_RESULT_DATE = /Match Result \((.+)\)\s*$/;
 
@@ -97,15 +102,6 @@ export function isFixtureFeedItem(item: UnifiedFeedItem): boolean {
   return isFixtureMarket(item.data.tags);
 }
 
-/** First-generation outright tags (no revision suffix) from the bad import run. */
-const LEGACY_OUTRIGHT_TAG = new RegExp(
-  `^${OUTRIGHT_TAG_PREFIX}\\d+-\\d+$`,
-);
-
-function hasLegacyOutrightTag(tags?: string[]): boolean {
-  return tags?.some((tag) => LEGACY_OUTRIGHT_TAG.test(tag)) ?? false;
-}
-
 /** Hide fixture match markets before the launch window (mid-August). */
 export function filterFeedByMinKickoff(
   items: UnifiedFeedItem[],
@@ -119,13 +115,33 @@ export function filterFeedByMinKickoff(
   });
 }
 
-/** Hide superseded outright groups (tag like outright-39-2026 without -v2). */
+/** Hide superseded outright groups when a newer revision exists for the same league+season. */
 export function filterFeedHideLegacyOutrights(
+  items: UnifiedFeedItem[],
+): UnifiedFeedItem[] {
+  const groups = items
+    .filter((item): item is Extract<UnifiedFeedItem, { type: "group" }> =>
+      item.type === "group",
+    )
+    .map((item) => item.data);
+
+  const maxRevision = buildMaxOutrightRevisionMap(groups);
+
+  return items.filter((item) => {
+    if (item.type !== "group") return true;
+    if (!isOutrightGroup(item.data.tags)) return true;
+
+    return !isSupersededOutrightInBatch(item.data.tags, maxRevision);
+  });
+}
+
+/** Hide pre-taxonomy fixture groups from match market feeds. */
+export function filterFeedHideLegacyMatchGroups(
   items: UnifiedFeedItem[],
 ): UnifiedFeedItem[] {
   return items.filter((item) => {
     if (item.type !== "group") return true;
 
-    return !hasLegacyOutrightTag(item.data.tags);
+    return !isLegacyMatchGroup(item.data.tags, item.data.outcomes);
   });
 }

@@ -10,8 +10,21 @@ import { useSession } from "../../hooks/useSession";
 
 export function PrivyConnectButton(_props: ConnectButtonProps) {
   const { isReady, isLoggedIn, address, login, logout } = useSession();
+  const [bootTimedOut, setBootTimedOut] = React.useState(false);
 
-  if (!isReady) {
+  React.useEffect(() => {
+    if (isReady) {
+      setBootTimedOut(false);
+
+      return;
+    }
+
+    const timer = window.setTimeout(() => setBootTimedOut(true), 8_000);
+
+    return () => window.clearTimeout(timer);
+  }, [isReady]);
+
+  if (!isReady && !bootTimedOut) {
     return (
       <Button isDisabled isLoading size="sm">
         Loading...

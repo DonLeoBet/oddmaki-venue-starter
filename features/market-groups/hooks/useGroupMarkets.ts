@@ -11,6 +11,7 @@ import {
   formatVolume,
 } from "@/features/markets/utils/formatting";
 import { parseSubMarketIdentity } from "@/lib/markets/marketDisplay";
+import { stripFixtureMeta } from "@/lib/football/fixture-metadata";
 
 export interface GroupMarketDetail {
   marketId: string;
@@ -54,7 +55,8 @@ export function useGroupMarkets(groupId: string) {
         );
         const noPrice =
           yesPrice > 0 ? parseFloat((100 - yesPrice).toFixed(2)) : 0;
-        const { description } = parseAncillaryData(m.question || "");
+        const { description: rawDescription } = parseAncillaryData(m.question || "");
+        const description = stripFixtureMeta(rawDescription);
         const name = m.marketGroupItem?.marketName || `Market ${m.marketId}`;
         const identity = parseSubMarketIdentity(name);
 

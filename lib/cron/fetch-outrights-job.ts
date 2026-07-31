@@ -46,6 +46,7 @@ export async function runFetchOutrightsJob(options: {
   dryRun?: boolean;
   leagueIds?: number[];
   season?: number;
+  discoverWorld?: boolean;
 } = {}) {
   const season = options.season ?? OUTRIGHT_SEASON_YEAR;
 
@@ -54,6 +55,7 @@ export async function runFetchOutrightsJob(options: {
     chainId: ACTIVE_CHAIN_ID,
     dryRun: options.dryRun ?? false,
     season,
+    discoverWorld: options.discoverWorld ?? false,
     leagueIds: options.leagueIds ?? "all",
   });
 
@@ -63,6 +65,7 @@ export async function runFetchOutrightsJob(options: {
     fetchSummary = await fetchPreparedOutrightMarketGroups({
       leagueIds: options.leagueIds,
       season,
+      discoverWorld: options.discoverWorld,
     });
   } catch (error) {
     logFetchOutrightsError("Outright team fetch failed", error);

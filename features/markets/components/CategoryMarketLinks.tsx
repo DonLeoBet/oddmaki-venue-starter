@@ -1,100 +1,76 @@
 "use client";
 
-import NextLink from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 
+import {
+  SidebarAccordion,
+  SidebarLink,
+} from "@/components/sidebar/SidebarAccordion";
 import { useBrand } from "@/features/brand";
-import { getCategoryNavGroups } from "@/config/categoryNav";
+import { getSidebarLeagueLinks } from "@/config/sidebarNav";
 import type { BrandId } from "@/config/brandRouting";
+import { buildCategoryPath } from "@/config/brandRouting";
+import { getMarketTabLabel } from "@/config/marketTypes";
+import { getOverviewCardMarketTypes } from "@/config/brandMarkets";
 
-function isLinkActive(pathname: string, href: string): boolean {
+function isPathActive(pathname: string, href: string): boolean {
+  if (href.startsWith("/?")) return false;
+
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+/** Mobile/tablet league nav — submarkets hidden until league is expanded. */
 export function CategoryMarketLinks() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const category = searchParams.get("category");
   const { brandId, locale } = useBrand();
-  const groups = getCategoryNavGroups(brandId as BrandId, locale);
 
-  if (groups.length === 0) return null;
+  const leagues = getSidebarLeagueLinks(brandId as BrandId, locale);
+  const marketTypes = getOverviewCardMarketTypes(brandId as BrandId);
 
-  const isGlazenBol = brandId === "glazenbol";
-
-  if (isGlazenBol) {
-    const flatLinks = groups.flatMap((g) => g.links);
-
-    return (
-      <nav
-        aria-label="Market categories"
-        className="flex flex-wrap items-center gap-x-3 gap-y-1.5 pb-2 border-b border-divider/50"
-      >
-        {flatLinks.map((link) => {
-          const active = isLinkActive(pathname, link.href);
-
-          return (
-            <NextLink
-              key={link.href}
-              className={`text-sm whitespace-nowrap transition-colors hover:text-primary ${
-                active
-                  ? "font-semibold text-primary"
-                  : "text-default-500 hover:underline"
-              }`}
-              href={link.href}
-            >
-              {link.label}
-            </NextLink>
-          );
-        })}
-      </nav>
-    );
-  }
+  if (leagues.length === 0) return null;
 
   return (
     <nav
-      aria-label="Market categories"
-      className="flex flex-col gap-2 pb-2 border-b border-divider/50"
+      aria-label="Leagues and markets"
+      className="flex flex-col gap-1 border-b border-white/[0.06] pb-3"
     >
-      {groups.map((group) => (
-        <div
-          key={group.leagueSlug}
-          className="flex flex-wrap items-baseline gap-x-2 gap-y-1"
-        >
-          <span className="text-xs font-semibold uppercase tracking-wide text-default-400 shrink-0">
-            {group.leagueLabel}
-          </span>
-          <span className="text-default-300 hidden sm:inline" aria-hidden>
-            ·
-          </span>
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            {group.links.map((link, i) => {
-              const active = isLinkActive(pathname, link.href);
+      {leagues.map((league) => {
+        const marketLinks = marketTypes.map((marketType) => ({
+          href: buildCategoryPath(brandId as BrandId, league.slug, marketType),
+          label: getMarketTabLabel(marketType, locale),
+        }));
+        const leagueFeedActive = pathname === "/" && category === league.slug;
+        const leagueRouteActive = marketLinks.some((link) =>
+          isPathActive(pathname, link.href),
+        );
 
-              return (
-                <span key={link.href} className="inline-flex items-center gap-2">
-                  {i > 0 && (
-                    <span
-                      className="text-default-300 text-xs hidden sm:inline"
-                      aria-hidden
-                    >
-                      |
-                    </span>
-                  )}
-                  <NextLink
-                    className={`text-sm whitespace-nowrap transition-colors hover:text-primary ${
-                      active
-                        ? "font-semibold text-primary"
-                        : "text-default-500 hover:underline"
-                    }`}
-                    href={link.href}
-                  >
-                    {link.label}
-                  </NextLink>
-                </span>
-              );
-            })}
-          </div>
-        </div>
-      ))}
+        return (
+          <SidebarAccordion
+            key={league.slug}
+            forceOpen={leagueFeedActive || leagueRouteActive || category === league.slug}
+            id={`mobile-league-${league.slug}`}
+            label={league.label}
+            level={1}
+          >
+            <SidebarLink
+              active={leagueFeedActive}
+              href={league.href}
+              label="All matches"
+            />
+            {marketLinks.map((link) => (
+              <SidebarLink
+                key={link.href}
+                active={isPathActive(pathname, link.href)}
+                href={link.href}
+                label={link.label}
+                sub
+              />
+            ))}
+          </SidebarAccordion>
+        );
+      })}
     </nav>
   );
 }

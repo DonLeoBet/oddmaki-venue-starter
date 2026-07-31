@@ -1,129 +1,247 @@
 "use client";
 
-import type { FormattedMarketGroup, FormattedGroupOutcome } from "../types";
+import type { FormattedMarketGroup } from "../types";
 
 import { Card, CardHeader, CardBody, CardFooter } from "@heroui/card";
 import NextLink from "next/link";
 
 import { MarketGroupStatus } from "../types";
-
-function CheckIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      fill="currentColor"
-      viewBox="0 0 24 24"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path
-        clipRule="evenodd"
-        d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z"
-        fillRule="evenodd"
-      />
-    </svg>
-  );
-}
-
-function XIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      fill="currentColor"
-      viewBox="0 0 24 24"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path
-        clipRule="evenodd"
-        d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zm-1.72 6.97a.75.75 0 10-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 101.06 1.06L12 13.06l1.72 1.72a.75.75 0 101.06-1.06L13.06 12l1.72-1.72a.75.75 0 10-1.06-1.06L12 10.94l-1.72-1.72z"
-        fillRule="evenodd"
-      />
-    </svg>
-  );
-}
+import { useBrand } from "@/features/brand";
+import { getOverviewCardMarketTypes } from "@/config/brandMarkets";
+import {
+  groupOutcomesForOverview,
+  type OverviewMarketTypeRow,
+  type OverviewOutcomeChip,
+} from "@/features/markets/utils/overviewMarkets";
+import { MatchCardHeader } from "./overview/MatchCardHeader";
+import { OneXTwoOverviewRow } from "./overview/OneXTwoOverviewRow";
+import { alpha, colors } from "@/lib/tokens";
+import { getMatchGroupHref } from "@/features/market-groups/utils/matchGroupPaths";
 
 interface MarketGroupCardProps {
   group: FormattedMarketGroup;
 }
 
-function OutcomeRow({
-  outcome,
+function OutcomeChip({
+  chip,
   isWinner,
   isResolved,
 }: {
-  outcome: FormattedGroupOutcome;
+  chip: OverviewOutcomeChip;
   isWinner: boolean;
   isResolved: boolean;
 }) {
-  const pct = Math.round(outcome.probability);
+  const pct = Math.round(chip.probability);
 
   return (
-    <div className="flex items-center justify-between py-1.5 gap-3">
-      <span className="text-sm truncate flex-1">{outcome.name}</span>
-      <div className="flex items-center gap-3 flex-shrink-0">
-        {isResolved ? (
-          <div className="flex items-center gap-1">
-            {isWinner ? (
-              <CheckIcon className="w-4 h-4 text-primary" />
-            ) : (
-              <XIcon className="w-4 h-4 text-secondary" />
-            )}
-            <span
-              className={`text-xs font-semibold ${isWinner ? "text-primary" : "text-secondary"}`}
-            >
-              {isWinner ? "Yes" : "No"}
-            </span>
-          </div>
-        ) : (
-          <>
-            <span
-              className={`text-sm font-semibold ${pct >= 50 ? "text-primary" : "text-default-500"}`}
-            >
-              {pct}%
-            </span>
-            <div className="flex gap-1">
-              <span className="text-xs rounded bg-primary/10 text-primary px-2 py-0.5">
-                Yes
-              </span>
-              <span className="text-xs rounded bg-secondary/10 text-secondary px-2 py-0.5">
-                No
-              </span>
-            </div>
-          </>
-        )}
+    <span
+      className={`text-xs rounded-lg px-2 py-0.5 font-medium whitespace-nowrap ${
+        isResolved && isWinner ?
+          "bg-primary/20 text-primary"
+        : "bg-default-100 text-default-600"
+      }`}
+    >
+      {chip.label} {pct}%
+    </span>
+  );
+}
+
+function BinaryOverviewRow({
+  section,
+  isResolved,
+  resolvedMarketId,
+}: {
+  section: OverviewMarketTypeRow;
+  isResolved: boolean;
+  resolvedMarketId: string;
+}) {
+  const positiveKey = section.marketType === "btts" ? "yes" : "over";
+  const negativeKey = section.marketType === "btts" ? "no" : "under";
+  const positive = section.outcomes.find((o) => o.outcomeKey === positiveKey);
+  const negative = section.outcomes.find((o) => o.outcomeKey === negativeKey);
+
+  if (!positive || !negative) {
+    return (
+      <MarketTypeOverviewRow
+        isResolved={isResolved}
+        resolvedMarketId={resolvedMarketId}
+        section={section}
+      />
+    );
+  }
+
+  const posPct = Math.round(positive.probability);
+  const negPct = Math.round(negative.probability);
+
+  return (
+    <div className="py-2">
+      <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-default-400">
+        {section.label}
+      </span>
+      <div className="flex gap-1.5">
+        <div
+          className="flex-1 rounded-lg border py-1.5 text-center"
+          style={{
+            backgroundColor: alpha(colors.neonCyan, 0.1),
+            borderColor: alpha(colors.neonCyan, 0.25),
+          }}
+        >
+          <span className="block text-[10px] font-semibold text-primary">
+            {positive.label}
+          </span>
+          <span className="block text-sm font-bold text-primary tabular-nums">
+            {posPct}%
+          </span>
+        </div>
+        <div
+          className="flex-1 rounded-lg border py-1.5 text-center"
+          style={{
+            backgroundColor: alpha(colors.neonMagenta, 0.1),
+            borderColor: alpha(colors.neonMagenta, 0.25),
+          }}
+        >
+          <span className="block text-[10px] font-semibold text-secondary">
+            {negative.label}
+          </span>
+          <span className="block text-sm font-bold text-secondary tabular-nums">
+            {negPct}%
+          </span>
+        </div>
       </div>
     </div>
   );
 }
 
-export function MarketGroupCard({ group }: MarketGroupCardProps) {
+function MarketTypeOverviewRow({
+  section,
+  isResolved,
+  resolvedMarketId,
+}: {
+  section: OverviewMarketTypeRow;
+  isResolved: boolean;
+  resolvedMarketId: string;
+}) {
   return (
-    <NextLink className="block" href={`/market/multi/${group.groupId}`}>
-      <Card className="w-full h-[180px] hover:scale-[1.02] transition-transform cursor-pointer">
-        <CardHeader className="flex flex-col items-start gap-2 pt-4 pb-0 flex-shrink-0">
-          <h3 className="text-base font-semibold line-clamp-2">
-            {group.marketQuestion}
-          </h3>
-        </CardHeader>
+    <div className="flex items-start justify-between gap-3 py-1.5">
+      <span className="text-xs font-semibold uppercase tracking-wide text-default-400 flex-shrink-0 pt-0.5">
+        {section.label}
+      </span>
+      <div className="flex flex-wrap gap-1 justify-end">
+        {section.outcomes.map((chip) => (
+          <OutcomeChip
+            key={chip.marketId}
+            chip={chip}
+            isResolved={isResolved}
+            isWinner={chip.marketId === resolvedMarketId}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
 
-        <CardBody className="gap-0 py-2 overflow-y-auto flex-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <div className="flex flex-col divide-y divide-default-100">
-            {group.outcomes.map((outcome) => (
-              <OutcomeRow
-                key={outcome.marketId}
-                isResolved={group.status === MarketGroupStatus.RESOLVED}
-                isWinner={outcome.marketId === group.resolvedMarketId}
-                outcome={outcome}
+function OverviewSectionRow({
+  section,
+  isResolved,
+  resolvedMarketId,
+}: {
+  section: OverviewMarketTypeRow;
+  isResolved: boolean;
+  resolvedMarketId: string;
+}) {
+  if (section.marketType === "1x2") {
+    return (
+      <OneXTwoOverviewRow
+        isResolved={isResolved}
+        outcomes={section.outcomes}
+        resolvedMarketId={resolvedMarketId}
+      />
+    );
+  }
+
+  if (
+    section.marketType === "btts" ||
+    section.marketType === "ou25"
+  ) {
+    return (
+      <BinaryOverviewRow
+        isResolved={isResolved}
+        resolvedMarketId={resolvedMarketId}
+        section={section}
+      />
+    );
+  }
+
+  return (
+    <MarketTypeOverviewRow
+      isResolved={isResolved}
+      resolvedMarketId={resolvedMarketId}
+      section={section}
+    />
+  );
+}
+
+export function MarketGroupCard({ group }: MarketGroupCardProps) {
+  const { brandId, locale } = useBrand();
+  const overviewMarketTypes = getOverviewCardMarketTypes(brandId);
+  const parsedTitle = group.marketQuestion.match(/^(.+?)\s+vs\s+(.+?)\s+—/i);
+  const teams =
+    parsedTitle ?
+      {
+        home: { name: parsedTitle[1].trim() },
+        away: { name: parsedTitle[2].trim() },
+      }
+    : undefined;
+  const sections = groupOutcomesForOverview(
+    group.outcomes,
+    locale,
+    teams,
+    overviewMarketTypes,
+  );
+  const isResolved = group.status === MarketGroupStatus.RESOLVED;
+  const detailHref = getMatchGroupHref(
+    brandId,
+    {
+      groupId: group.groupId,
+      marketQuestion: group.marketQuestion,
+      tags: group.tags,
+    },
+    locale,
+  );
+
+  return (
+    <Card className="w-full min-h-[200px] border border-default-100/50">
+      <CardHeader className="flex flex-col items-start gap-2 pt-4 pb-0 flex-shrink-0">
+        <MatchCardHeader group={group} />
+      </CardHeader>
+
+      <CardBody className="gap-0 py-2 overflow-y-auto flex-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {sections.length === 0 ?
+          <p className="text-xs text-default-400 px-1 py-2">No markets yet</p>
+        : <div className="flex flex-col divide-y divide-default-100/80">
+            {sections.map((section) => (
+              <OverviewSectionRow
+                key={section.marketType}
+                isResolved={isResolved}
+                resolvedMarketId={group.resolvedMarketId}
+                section={section}
               />
             ))}
           </div>
-        </CardBody>
+        }
+      </CardBody>
 
-        <CardFooter className="flex-shrink-0">
-          <div className="flex justify-between w-full text-xs text-default-400">
-            <span>{group.volumeFormatted} Vol.</span>
-          </div>
-        </CardFooter>
-      </Card>
-    </NextLink>
+      <CardFooter className="flex-shrink-0">
+        <div className="flex justify-between items-center w-full text-xs">
+          <span className="text-default-400">{group.volumeFormatted} Vol.</span>
+          <NextLink
+            className="font-semibold text-primary hover:underline"
+            href={detailHref}
+          >
+            All markets
+          </NextLink>
+        </div>
+      </CardFooter>
+    </Card>
   );
 }
