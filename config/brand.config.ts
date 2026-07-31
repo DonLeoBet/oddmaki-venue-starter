@@ -71,15 +71,52 @@ export function resolveBrandDefaultLocale(brandId: BrandId): Locale {
   return resolveLocale(envLocale, config.defaultLocale);
 }
 
+/** Intrinsic pixel size of each brand wordmark (for header layout). */
+export interface BrandLogoIntrinsicSize {
+  width: number;
+  height: number;
+}
+
+export const BRAND_LOGO_INTRINSIC_SIZE: Record<BrandId, BrandLogoIntrinsicSize> =
+  {
+    polyfootball: { width: 256, height: 31 },
+    topclass: { width: 665, height: 81 },
+    glazenbol: { width: 256, height: 31 },
+  };
+
+export const BRAND_LOGO_URL: Record<BrandId, string> = {
+  polyfootball: "/logo.png",
+  topclass: "/topclass-logo.png",
+  glazenbol: "/logo.png",
+};
+
+export function getBrandLogoIntrinsicSize(
+  brandId: BrandId,
+  logoUrl?: string,
+): BrandLogoIntrinsicSize {
+  if (logoUrl === "/topclass-logo.png") {
+    return BRAND_LOGO_INTRINSIC_SIZE.topclass;
+  }
+  return BRAND_LOGO_INTRINSIC_SIZE[brandId];
+}
+
+export function getDefaultBrandLogoUrl(brandId: BrandId): string {
+  return BRAND_LOGO_URL[brandId];
+}
+
+const resolvedBrandId = resolveBrandId(process.env.NEXT_PUBLIC_BRAND_ID);
+
 /**
  * White-label brand configuration (Poly.Football, TopClass, GlazenBol, etc.)
  * Override via NEXT_PUBLIC_* env vars per deployment.
  */
 export const BRAND_CONFIG = {
-  id: resolveBrandId(process.env.NEXT_PUBLIC_BRAND_ID),
+  id: resolvedBrandId,
   name: process.env.NEXT_PUBLIC_BRAND_NAME || "Poly.Football",
   domain: process.env.NEXT_PUBLIC_BRAND_DOMAIN || "poly.football",
-  logoUrl: process.env.NEXT_PUBLIC_BRAND_LOGO_URL || "/logo.png",
+  logoUrl:
+    process.env.NEXT_PUBLIC_BRAND_LOGO_URL ||
+    getDefaultBrandLogoUrl(resolvedBrandId),
   get defaultLocale(): Locale {
     return resolveBrandDefaultLocale(this.id);
   },

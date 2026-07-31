@@ -1,11 +1,11 @@
 import Image from "next/image";
 
+import {
+  BRAND_CONFIG,
+  getBrandLogoIntrinsicSize,
+} from "@/config/brand.config";
 import { venueConfig } from "@/config/venue.config";
 import { fonts, letterSpacings } from "@/lib/tokens";
-
-/** TopClass / Poly.Football wordmark is 256×31. */
-const LOGO_WIDTH = 256;
-const LOGO_HEIGHT = 31;
 
 export interface BrandLogoProps {
   height?: number;
@@ -23,18 +23,22 @@ export function BrandLogo({
   showName = false,
 }: BrandLogoProps) {
   const { logo, name } = venueConfig.branding;
-  const width = Math.round(height * (LOGO_WIDTH / LOGO_HEIGHT));
+  const { width: intrinsicWidth, height: intrinsicHeight } =
+    getBrandLogoIntrinsicSize(BRAND_CONFIG.id, logo);
+  const width = Math.round(height * (intrinsicWidth / intrinsicHeight));
+  const maxWidth = Math.round(220 * (intrinsicWidth / 256));
 
   const image = (
     <Image
       alt={`${name} logo`}
       className={
         className ??
-        "h-8 w-auto max-w-[220px] shrink-0 object-contain object-left"
+        "w-auto shrink-0 object-contain object-left"
       }
       height={height}
       priority={priority}
       src={logo}
+      style={{ height, maxWidth }}
       width={width}
     />
   );
