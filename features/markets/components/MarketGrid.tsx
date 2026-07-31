@@ -69,6 +69,7 @@ function FeedItemCard({ item }: { item: UnifiedFeedItem }) {
 export function MarketGrid() {
   const searchParams = useSearchParams();
   const selectedCategory = searchParams.get("category");
+  const leagueFilter = searchParams.get("league");
   const sortParam = searchParams.get("sort");
   const searchQuery = searchParams.get("q")?.trim() ?? "";
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("Active");
@@ -141,16 +142,31 @@ export function MarketGrid() {
     return sortUnifiedFeedItems(result, sortBy);
   }, [items, selectedCategory, statusFilter, sortBy]);
 
-  const { mainGridItems, outrightSectionItems } = useMemo(() => {
+  const { mainGridItems, outrightSectionItems, outrightSectionTitle, outrightViewAllHref } =
+    useMemo(() => {
     const outrightFeedItems: UnifiedFeedItem[] = outrightGroups.map((group) => ({
       type: "group" as const,
       data: group,
     }));
 
+    const filterOutrightsForLeague = (slug: string) =>
+      outrightFeedItems.filter((item) =>
+        item.type === "group" &&
+        groupMatchesLeagueSlug(item.data.tags ?? [], slug),
+      );
+
     if (selectedCategory === "outrights") {
+      let items = outrightFeedItems;
+
+      if (leagueFilter && LEAGUE_BY_SLUG[leagueFilter]) {
+        items = filterOutrightsForLeague(leagueFilter);
+      }
+
       return {
-        mainGridItems: outrightFeedItems,
+        mainGridItems: items,
         outrightSectionItems: [] as UnifiedFeedItem[],
+        outrightSectionTitle: "Long-term odds",
+        outrightViewAllHref: "/?category=outrights",
       };
     }
 
@@ -158,19 +174,28 @@ export function MarketGrid() {
       const hasLeagueFilter = Boolean(LEAGUE_BY_SLUG[selectedCategory]);
 
       if (hasLeagueFilter) {
+        const leagueOutrights = filterOutrightsForLeague(selectedCategory);
+
         return {
           mainGridItems: filteredItems.filter(
             (item) => item.type !== "group" || !isOutrightGroup(item.data.tags),
           ),
-          outrightSectionItems: [] as UnifiedFeedItem[],
+          outrightSectionItems: leagueOutrights,
+          outrightSectionTitle: "Long-term odds",
+          outrightViewAllHref: `/?category=outrights&league=${selectedCategory}`,
         };
       }
     }
 
     const mainGridItems = filteredItems.filter((item) => !isOutrightFeedItem(item));
 
-    return { mainGridItems, outrightSectionItems: outrightFeedItems };
-  }, [filteredItems, selectedCategory, outrightGroups]);
+    return {
+      mainGridItems,
+      outrightSectionItems: outrightFeedItems,
+      outrightSectionTitle: "Long-term odds",
+      outrightViewAllHref: "/?category=outrights",
+    };
+  }, [filteredItems, selectedCategory, leagueFilter, outrightGroups]);
 
   const seriesIds = useMemo(
     () =>
@@ -287,11 +312,11 @@ export function MarketGrid() {
             <section className="flex flex-col gap-4 pt-4">
               <div className="flex items-center justify-between gap-3 px-0.5">
                 <h2 className="text-xl font-bold tracking-tight text-foreground">
-                  Long-term odds
+                  {outrightSectionTitle}
                 </h2>
                 <NextLink
                   className="text-sm font-medium text-primary hover:underline"
-                  href="/?category=outrights"
+                  href={outrightViewAllHref}
                 >
                   View all
                 </NextLink>

@@ -17,8 +17,8 @@ export const Navbar = () => {
   return (
     <HeroUINavbar
       classNames={{
-        base: "bg-background/95 backdrop-blur-xl",
-        wrapper: "w-full max-w-none px-4 sm:px-6",
+        base: "bg-background/95 backdrop-blur-xl max-w-full overflow-x-hidden",
+        wrapper: "w-full max-w-full px-3 sm:px-6",
       }}
       maxWidth="full"
       position="sticky"
@@ -38,8 +38,8 @@ export const Navbar = () => {
         <MarketSearchBarShell />
       </NavbarContent>
 
-      <NavbarContent className="gap-1 sm:gap-2" justify="end">
-        <NavbarItem>
+      <NavbarContent className="gap-1 sm:gap-2 min-w-0 shrink" justify="end">
+        <NavbarItem className="hidden sm:flex">
           <Button
             as={NextLink}
             className="font-semibold px-2 sm:px-3"
@@ -50,16 +50,16 @@ export const Navbar = () => {
             Vault
           </Button>
         </NavbarItem>
-        <NavbarItem>
+        <NavbarItem className="hidden md:flex">
           <CreateMarketButton />
         </NavbarItem>
-        <NavbarItem>
+        <NavbarItem className="min-w-0">
           <div className="flex items-center gap-1 sm:gap-2">
             <WalletPanel />
-            <TopUp className="font-semibold" />
+            <TopUp className="hidden sm:flex font-semibold" />
           </div>
         </NavbarItem>
-        <NavbarItem>
+        <NavbarItem className="shrink-0">
           <ConnectButton />
         </NavbarItem>
       </NavbarContent>

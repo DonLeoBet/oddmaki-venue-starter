@@ -150,7 +150,7 @@ export function PriceMarketChartSection({
     <Card>
       {/* Top row: Price info + countdown */}
       <CardHeader className="flex-col gap-3 pb-0">
-        <div className="flex items-start justify-between w-full">
+        <div className="flex flex-col gap-3 w-full min-w-0 sm:flex-row sm:items-start sm:justify-between">
           <PriceInfoHeader
             closePrice={closePrice}
             currentPrice={livePrice?.price}
@@ -173,9 +173,9 @@ export function PriceMarketChartSection({
         </div>
 
         {/* Subheader: Timeframe buttons + tab switcher */}
-        <div className="flex items-center justify-between w-full">
+        <div className="flex flex-col gap-3 w-full min-w-0 sm:flex-row sm:items-center sm:justify-between">
           {/* Timeframe selector — only for probability tab */}
-          <div className="flex items-center gap-1">
+          <div className="flex min-w-0 items-center gap-1 overflow-x-auto [scrollbar-width:thin]">
             {effectiveTab === "probability" && probabilitySlot != null ? (
               <span className="text-xs text-default-400">
                 Implied odds from the pool

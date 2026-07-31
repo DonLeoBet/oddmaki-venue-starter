@@ -51,7 +51,7 @@ export default function RootLayout({
       >
         <Providers themeProps={{ attribute: "class", defaultTheme: "dark" }}>
           <NavigationProgress />
-          <div className="relative flex min-h-screen flex-col">
+          <div className="relative flex min-h-screen flex-col overflow-x-hidden max-w-[100vw]">
             <Navbar />
             <AppShell>{children}</AppShell>
             <footer className="w-full flex items-center justify-center py-3">

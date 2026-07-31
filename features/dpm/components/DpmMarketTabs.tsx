@@ -8,6 +8,7 @@ import { Tabs, Tab } from "@heroui/tabs";
 import { DpmActivity } from "./DpmActivity";
 import { DpmTopHolders } from "./DpmTopHolders";
 import { DpmYourPosition } from "./DpmYourPosition";
+import { marketDetailTabClassNames } from "@/features/market-detail/marketDetailTabStyles";
 
 interface DpmMarketTabsProps {
   marketId: string;
@@ -27,16 +28,8 @@ export function DpmMarketTabs({
         <DpmYourPosition data={data} marketId={marketId} outcomes={outcomes} />
         <Tabs
           aria-label="Pool detail tabs"
-          classNames={{
-            base: "w-full",
-            tabList: "p-0 gap-6 w-full bg-transparent rounded-none",
-            tab: "px-0 h-auto py-1 w-fit",
-            cursor: "hidden",
-            tabContent:
-              "text-default-500 group-data-[selected=true]:text-foreground font-semibold text-base",
-            panel: "pt-4 px-0",
-          }}
-          variant="light"
+          classNames={marketDetailTabClassNames}
+          variant="underlined"
         >
           <Tab key="activity" title="Activity">
             <DpmActivity bare marketId={marketId} />

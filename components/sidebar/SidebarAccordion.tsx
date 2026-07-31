@@ -74,6 +74,7 @@ interface SidebarLinkProps {
   label: string;
   active?: boolean;
   sub?: boolean;
+  onNavigate?: () => void;
 }
 
 export function SidebarLink({
@@ -81,6 +82,7 @@ export function SidebarLink({
   label,
   active = false,
   sub = false,
+  onNavigate,
 }: SidebarLinkProps) {
   return (
     <NextLink
@@ -99,6 +101,7 @@ export function SidebarLink({
           ? { backgroundColor: alpha(colors.neonCyan, 0.1) }
           : undefined
       }
+      onClick={onNavigate}
     >
       {label}
     </NextLink>

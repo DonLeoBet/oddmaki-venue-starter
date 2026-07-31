@@ -5,6 +5,7 @@ import { Tabs, Tab } from "@heroui/tabs";
 import { ActivityFeed } from "./ActivityFeed";
 import { TopHoldersView } from "./TopHoldersView";
 import { PositionsView } from "./PositionsView";
+import { marketDetailTabClassNames } from "../marketDetailTabStyles";
 
 interface MarketDetailTabsProps {
   marketId: string;
@@ -24,16 +25,8 @@ export function MarketDetailTabs({
   return (
     <Tabs
       aria-label="Market detail tabs"
-      classNames={{
-        base: "w-full",
-        tabList: "p-0 gap-6 w-full bg-transparent rounded-none",
-        tab: "px-0 h-auto py-1 w-fit",
-        cursor: "hidden",
-        tabContent:
-          "text-default-500 group-data-[selected=true]:text-foreground font-semibold text-base",
-        panel: "pt-6 px-0",
-      }}
-      variant="light"
+      classNames={marketDetailTabClassNames}
+      variant="underlined"
     >
       <Tab key="activity" title="Activity">
         <ActivityFeed

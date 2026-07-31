@@ -3,8 +3,8 @@
 import { Suspense } from "react";
 import { usePathname } from "next/navigation";
 
+import { MobileLeagueDrawer } from "@/components/mobile-league-drawer";
 import { CategoryFilter } from "@/features/markets/components/CategoryFilter";
-import { CategoryMarketLinks } from "@/features/markets/components/CategoryMarketLinks";
 import { DesktopMarketToolbar } from "@/features/markets/components/DesktopMarketToolbar";
 
 export function CategoryNav() {
@@ -23,13 +23,13 @@ export function CategoryNav() {
         </Suspense>
       </div>
 
-      {/* Mobile/tablet: compact top nav with collapsible league submarkets. */}
-      <div className="lg:hidden flex flex-col gap-2">
+      {/* Mobile/tablet: category chips + leagues drawer (no inline accordion tree). */}
+      <div className="flex min-w-0 items-center gap-2 px-3 sm:px-4 lg:hidden">
         <Suspense>
           <CategoryFilter />
         </Suspense>
         <Suspense>
-          <CategoryMarketLinks />
+          <MobileLeagueDrawer />
         </Suspense>
       </div>
     </div>

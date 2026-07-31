@@ -91,7 +91,7 @@ export function CategoryFilter() {
           <div
             key={category.id}
             ref={setItemRef(index)}
-            className={`flex-shrink-0 ${index >= visibleCount ? "invisible" : ""}`}
+            className={`flex-shrink-0 ${index >= visibleCount ? "hidden" : ""}`}
           >
             <Button
               className={`font-medium text-sm ${
