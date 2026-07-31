@@ -80,13 +80,13 @@ export interface BrandLogoIntrinsicSize {
 export const BRAND_LOGO_INTRINSIC_SIZE: Record<BrandId, BrandLogoIntrinsicSize> =
   {
     polyfootball: { width: 256, height: 31 },
-    topclass: { width: 665, height: 81 },
+    topclass: { width: 1022, height: 123 },
     glazenbol: { width: 256, height: 31 },
   };
 
 export const BRAND_LOGO_URL: Record<BrandId, string> = {
   polyfootball: "/logo.png",
-  topclass: "/topclass-logo.png",
+  topclass: "/topclass-logo-transparent.png",
   glazenbol: "/logo.png",
 };
 
@@ -94,7 +94,10 @@ export function getBrandLogoIntrinsicSize(
   brandId: BrandId,
   logoUrl?: string,
 ): BrandLogoIntrinsicSize {
-  if (logoUrl === "/topclass-logo.png") {
+  if (
+    logoUrl === "/topclass-logo-transparent.png" ||
+    logoUrl === "/topclass-logo.png"
+  ) {
     return BRAND_LOGO_INTRINSIC_SIZE.topclass;
   }
   return BRAND_LOGO_INTRINSIC_SIZE[brandId];
