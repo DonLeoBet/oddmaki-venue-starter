@@ -252,6 +252,47 @@ Standard Next.js deployment. Set the required environment variables in your plat
 - **Maintainer** — [predictablereality.com](https://predictablereality.com)
 - **Contact** — team@oddmaki.com
 
+## Football markets & multi-brand (Poly.Football)
+
+This fork adds standard football match lines, category pages, and white-label brand routing on a shared venue.
+
+### Market types (`config/marketTypes.ts`)
+
+Per fixture the bot can create: **1x2**, **btts**, **ou15**, **ou25**, **ou35**, **double_chance**, **dnb** (17 binary sub-markets per group).
+
+### Category pages
+
+| Brand | Example URL |
+|-------|----------------|
+| Poly.Football | `/markets/eredivisie/btts` |
+| Topclass | `/predictions/eredivisie/both-teams-to-score` |
+| GlazenBol | `/glazenbol/beide-scoren/eredivisie` |
+
+### Multi-brand env (same codebase, same `VENUE_ID`)
+
+```env
+NEXT_PUBLIC_BRAND_ID=polyfootball   # polyfootball | topclass | glazenbol
+NEXT_PUBLIC_BRAND_NAME=Poly.Football
+NEXT_PUBLIC_BRAND_DOMAIN=poly.football
+NEXT_PUBLIC_DEFAULT_LANGUAGE=nl     # en | nl
+```
+
+Add or tune a brand in:
+
+- `config/brandRouting.ts` — URL slugs & path order
+- `config/brandSeo.ts` — title / meta / H1 patterns
+- `config/brandMarkets.ts` — visible leagues & market types
+
+Use `useBrand()` from `@/features/brand` in components.
+
+### Bootstrap test fixtures
+
+```bash
+curl -X POST /api/admin/fixtures/bootstrap -H 'Content-Type: application/json' -d '{"dryRun":true}'
+```
+
+Creates one full market group per league (requires bot env vars).
+
 ## License
 
 [MIT](./LICENSE) — fork it, brand it, ship it. Copyright (c) 2025-2026 Predictable Reality, Inc.

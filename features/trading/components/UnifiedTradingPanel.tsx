@@ -1,6 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, type CSSProperties } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  type CSSProperties,
+} from "react";
 import { Card, CardHeader, CardBody } from "@heroui/card";
 import { Button } from "@heroui/button";
 import {
@@ -17,6 +23,7 @@ import { MergeModal } from "./MergeModal";
 
 import { useOrderbookLevels } from "@/features/orderbook/hooks/useOrderbookLevels";
 import { useMarketFees } from "@/features/market-detail/hooks/useMarketFees";
+import { MarketImage } from "@/features/markets/components/MarketImage";
 import { alpha, colors, shadows } from "@/lib/tokens";
 
 const neonSelectedStyle = (accent: string): CSSProperties => ({
@@ -33,6 +40,10 @@ interface UnifiedTradingPanelProps {
   /** Fallback prices (0–100) from subgraph when orderbook is empty */
   yesPrice?: number;
   noPrice?: number;
+  /** Group market label, e.g. "1X2 · Ajax" or "Harry Kane" */
+  marketLabel?: string;
+  metadataURI?: string;
+  initialOutcomeIndex?: 0 | 1;
 }
 
 export function UnifiedTradingPanel({
@@ -41,9 +52,12 @@ export function UnifiedTradingPanel({
   tickSize,
   yesPrice,
   noPrice,
+  marketLabel,
+  metadataURI,
+  initialOutcomeIndex = 0,
 }: UnifiedTradingPanelProps) {
   const [mode, setMode] = useState<"market" | "limit">("limit");
-  const [outcomeIndex, setOutcomeIndex] = useState<0 | 1>(0);
+  const [outcomeIndex, setOutcomeIndex] = useState<0 | 1>(initialOutcomeIndex);
   const [side, setSide] = useState<"BUY" | "SELL">("BUY");
   const [prefillPrice, setPrefillPrice] = useState<string | undefined>();
   const [splitModalOpen, setSplitModalOpen] = useState(false);
@@ -56,6 +70,13 @@ export function UnifiedTradingPanel({
   // Use the selected outcome's book for mode detection
   const orderbook = outcomeIndex === 0 ? outcome0Book : outcome1Book;
   const hasSetDefaultRef = useRef(false);
+
+  useEffect(() => {
+    setOutcomeIndex(initialOutcomeIndex);
+    setSide("BUY");
+    setPrefillPrice(undefined);
+    hasSetDefaultRef.current = false;
+  }, [marketId, initialOutcomeIndex]);
 
   useEffect(() => {
     if (orderbook && !hasSetDefaultRef.current) {
@@ -183,6 +204,20 @@ export function UnifiedTradingPanel({
     <>
       <Card>
         <CardHeader className="flex flex-col gap-3 pb-0">
+          {marketLabel ? (
+            <div className="flex w-full items-center gap-2.5">
+              <MarketImage
+                metadataURI={metadataURI ?? ""}
+                name={marketLabel}
+                showFallback
+                size="md"
+              />
+              <span className="truncate text-base font-semibold text-foreground">
+                {marketLabel}
+              </span>
+            </div>
+          ) : null}
+
           {/* Row 1: Buy/Sell toggle (left) + Mode dropdown (right) */}
           <div className="flex justify-between items-center w-full">
             <div className="flex gap-1">

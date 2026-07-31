@@ -3,16 +3,20 @@
 import { useQuery } from "@tanstack/react-query";
 import { parseAncillaryData } from "@oddmaki-protocol/sdk";
 
+import type { MarketTypeId } from "@/config/marketTypes";
 import { useOddMakiClient } from "@/lib/oddmaki/hooks";
 import { queryKeys } from "@/lib/oddmaki/queryKeys";
 import {
   tickToPercentage,
   formatVolume,
 } from "@/features/markets/utils/formatting";
+import { parseSubMarketIdentity } from "@/lib/markets/marketDisplay";
 
 export interface GroupMarketDetail {
   marketId: string;
   name: string;
+  marketType: MarketTypeId | null;
+  outcomeKey: string | null;
   question: string;
   outcomes: string[];
   status: string;
@@ -27,6 +31,7 @@ export interface GroupMarketDetail {
   totalVolume: string;
   volumeFormatted: string;
   isPlaceholder: boolean;
+  metadataURI: string;
 }
 
 export function useGroupMarkets(groupId: string) {
@@ -50,10 +55,14 @@ export function useGroupMarkets(groupId: string) {
         const noPrice =
           yesPrice > 0 ? parseFloat((100 - yesPrice).toFixed(2)) : 0;
         const { description } = parseAncillaryData(m.question || "");
+        const name = m.marketGroupItem?.marketName || `Market ${m.marketId}`;
+        const identity = parseSubMarketIdentity(name);
 
         return {
           marketId: m.marketId,
-          name: m.marketGroupItem?.marketName || `Market ${m.marketId}`,
+          name,
+          marketType: identity?.marketType ?? null,
+          outcomeKey: identity?.outcomeKey ?? null,
           question: m.question || "",
           outcomes: m.outcomes || ["Yes", "No"],
           status: m.status,
@@ -69,6 +78,7 @@ export function useGroupMarkets(groupId: string) {
           totalVolume: m.totalVolume || "0",
           volumeFormatted: formatVolume(m.totalVolume || "0"),
           isPlaceholder: m.marketGroupItem?.isPlaceholder || false,
+          metadataURI: m.metadataURI || "",
         };
       });
     },

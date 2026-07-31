@@ -11,6 +11,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { parseAncillaryData } from "@oddmaki-protocol/sdk";
 
 import { calculateMarketPrices, formatVolume } from "../utils/formatting";
+import { sortUnifiedFeedItems } from "../utils/kickoffSort";
 
 import { useOddMakiClient } from "@/lib/oddmaki/hooks";
 import { getVenueId } from "@/config/venue.config";
@@ -104,17 +105,20 @@ export function useUnifiedFeed(sortBy: "created" | "volume" = "created") {
 
       const merged = client.public.mergeAndSortFeed(feedData, sortBy);
 
-      const items = merged.map((item: any): UnifiedFeedItem => {
-        if (item.type === "standalone") {
-          return { type: "standalone", data: formatStandaloneMarket(item) };
-        } else if (item.type === "series") {
-          return { type: "series", data: formatPriceMarketSeries(item) };
-        } else {
-          const formatted = client.public.formatMarketGroupForDisplay(item);
+      const items = sortUnifiedFeedItems(
+        merged.map((item: any): UnifiedFeedItem => {
+          if (item.type === "standalone") {
+            return { type: "standalone", data: formatStandaloneMarket(item) };
+          } else if (item.type === "series") {
+            return { type: "series", data: formatPriceMarketSeries(item) };
+          } else {
+            const formatted = client.public.formatMarketGroupForDisplay(item);
 
-          return { type: "group", data: formatGroup(formatted, item) };
-        }
-      });
+            return { type: "group", data: formatGroup(formatted, item) };
+          }
+        }),
+        sortBy,
+      );
 
       // SDK fetches up to `first` of each kind. If any bucket came back
       // full, there is likely another page.

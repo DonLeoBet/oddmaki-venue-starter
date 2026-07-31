@@ -5,14 +5,14 @@ import { Button } from "@heroui/button";
 import { Select, SelectItem } from "@heroui/select";
 import { Switch } from "@heroui/switch";
 import { Divider } from "@heroui/divider";
-import { useAccount } from "wagmi";
 import { estimateBuyFromShares } from "@oddmaki-protocol/sdk";
 
 import { usePlaceLimitOrder } from "../hooks/usePlaceLimitOrder";
 
-import { TransactionFlowModal } from "@/lib/oddmaki/TransactionFlowModal";
+import { useSession } from "@/features/auth";
 import { useCanTradeOnMarket } from "@/features/access-control";
 import { useTokenBalance } from "@/features/wallet";
+import { TransactionFlowModal } from "@/lib/oddmaki/TransactionFlowModal";
 
 interface LimitOrderFormProps {
   marketId: string;
@@ -40,7 +40,7 @@ export function LimitOrderForm({
   side,
   prefillPrice,
 }: LimitOrderFormProps) {
-  const { isConnected } = useAccount();
+  const { isLoggedIn } = useSession();
   const { startPlaceLimitOrder, flow } = usePlaceLimitOrder();
   const { data: canTrade = true } = useCanTradeOnMarket(
     marketId ? BigInt(marketId) : undefined,
@@ -84,7 +84,7 @@ export function LimitOrderForm({
   const balanceNum = parseFloat(walletBalance);
   const hasInsufficientBalance =
     side === "BUY" &&
-    isConnected &&
+    isLoggedIn &&
     estimate != null &&
     balanceNum < estimate.cost;
 
@@ -249,12 +249,12 @@ export function LimitOrderForm({
         className="w-full"
         color={sideColor}
         isDisabled={
-          !isConnected || !isValid || !canTrade || hasInsufficientBalance
+          !isLoggedIn || !isValid || !canTrade || hasInsufficientBalance
         }
         isLoading={flow.isRunning}
         onPress={handleSubmit}
       >
-        {!isConnected
+        {!isLoggedIn
           ? "Connect Wallet"
           : !canTrade
             ? "Access Restricted"

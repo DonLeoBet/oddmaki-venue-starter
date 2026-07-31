@@ -112,6 +112,12 @@ export const queryKeys = {
       ["unifiedFeed", venueId, sortBy] as const,
   },
 
+  marketSearch: {
+    all: ["marketSearch"] as const,
+    index: (venueId?: string, locale?: string) =>
+      ["marketSearch", "index", venueId, locale] as const,
+  },
+
   accessControl: {
     all: ["accessControl"] as const,
     canTrade: (marketId: string, user: string) =>

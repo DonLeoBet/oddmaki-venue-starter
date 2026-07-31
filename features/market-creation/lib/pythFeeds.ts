@@ -1,40 +1,16 @@
-export interface PythFeed {
-  id: `0x${string}`;
-  name: string;
-  symbol: string;
-  expo: number;
-}
-
-export const PYTH_FEEDS: PythFeed[] = [
-  {
-    id: "0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace",
-    name: "Ethereum",
-    symbol: "ETH/USD",
-    expo: -8,
-  },
-  {
-    id: "0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43",
-    name: "Bitcoin",
-    symbol: "BTC/USD",
-    expo: -8,
-  },
-  {
-    id: "0xef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d",
-    name: "Solana",
-    symbol: "SOL/USD",
-    expo: -8,
-  },
-];
-
-export const PYTH_FEED_MAP = new Map(PYTH_FEEDS.map((f) => [f.id, f]));
+export type { PythFeedConfig as PythFeed } from "@/config/pyth-feeds";
+export {
+  BASE_PYTH_FEED,
+  PYTH_FEED_MAP,
+  TOP_PYTH_FEEDS as PYTH_FEEDS,
+  resolvePythFeedById,
+  resolvePythAssetLabel,
+} from "@/config/pyth-feeds";
 
 /**
  * Trading-window presets, measured from the market's effective open time:
  * - For immediate markets, "5m" means "closes 5 minutes after tx mines".
  * - For scheduled markets, "5m" means "closes 5 minutes after openTime".
- *
- * The protocol enforces only `closeTime > effectiveOpenTime`; this list is a
- * UX convenience.
  */
 export const PYTH_DURATION_PRESETS: { label: string; seconds: number }[] = [
   { label: "1m", seconds: 60 },

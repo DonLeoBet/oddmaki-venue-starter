@@ -6,6 +6,8 @@
  * to set the env var and restart.
  */
 
+import { BRAND_CONFIG } from "./brand.config";
+
 import { ACTIVE_CHAIN_ID } from "@/lib/oddmaki/chain";
 
 const envVenueIdRaw = process.env.NEXT_PUBLIC_VENUE_ID;
@@ -17,7 +19,10 @@ const envVenueId =
 /** Fallback venue name used when neither the env var nor on-chain data resolve. */
 export const DEFAULT_VENUE_NAME = "OddMaki Markets";
 
-const envVenueName = process.env.NEXT_PUBLIC_VENUE_NAME?.trim() || undefined;
+const envVenueName =
+  process.env.NEXT_PUBLIC_VENUE_NAME?.trim() ||
+  process.env.NEXT_PUBLIC_BRAND_NAME?.trim() ||
+  undefined;
 
 /**
  * Get the configured venueId from the NEXT_PUBLIC_VENUE_ID env var.
@@ -42,11 +47,13 @@ export const venueConfig = {
 
   // Branding & UI
   branding: {
-    name: envVenueName ?? DEFAULT_VENUE_NAME,
+    name: envVenueName ?? BRAND_CONFIG.name,
     description: "Trade on prediction markets powered by OddMaki Protocol",
-    logo: "/logo.svg",
-    favicon: "/favicon.svg",
-    // Note: Theme colors are configured in theme.config.json
+    logo: BRAND_CONFIG.logoUrl,
+    favicon: BRAND_CONFIG.logoUrl,
+    domain: BRAND_CONFIG.domain,
+    traditionalBookieUrl: BRAND_CONFIG.traditionalBookieUrl,
+    // Note: Theme colors are configured in theme.config.json + brand.config.ts
   },
 
   // Network settings — driven by NEXT_PUBLIC_CHAIN_ID (see lib/oddmaki/chain.ts)

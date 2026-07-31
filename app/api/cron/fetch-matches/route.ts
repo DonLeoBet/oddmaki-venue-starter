@@ -4,33 +4,20 @@ import {
   logFetchMatchesError,
   runFetchMatchesJob,
 } from "@/lib/cron/fetch-matches-job";
+import { requireCronAuth } from "@/lib/server/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 /**
- * Optional bearer-token guard for Vercel Cron / external schedulers.
- * Set CRON_SECRET and send `Authorization: Bearer <CRON_SECRET>`.
+ * Football fixture sync cron — creates on-chain market groups for upcoming matches.
+ * Requires Authorization: Bearer ${CRON_SECRET} (Vercel cron sends this automatically).
  */
-function authorizeCron(request: NextRequest): NextResponse | null {
-  const secret = process.env.CRON_SECRET;
-
-  if (!secret) return null;
-
-  const auth = request.headers.get("authorization");
-
-  if (auth !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  return null;
-}
-
 async function handleRequest(request: NextRequest): Promise<NextResponse> {
-  const denied = authorizeCron(request);
+  const authError = requireCronAuth(request);
 
-  if (denied) return denied;
+  if (authError) return authError;
 
   try {
     const summary = await runFetchMatchesJob();

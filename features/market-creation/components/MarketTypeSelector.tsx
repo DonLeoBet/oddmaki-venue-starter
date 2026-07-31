@@ -5,6 +5,7 @@ import type { ReactElement } from "react";
 import { MARKET_TYPES, type MarketType } from "../types";
 
 import { colors, fonts } from "@/lib/tokens";
+import { BRAND_CONFIG } from "@/config/brand.config";
 
 interface MarketTypeSelectorProps {
   selected: MarketType | null;
@@ -82,6 +83,8 @@ export function MarketTypeSelector({
   selected,
   onSelect,
 }: MarketTypeSelectorProps) {
+  const primaryColor = BRAND_CONFIG.theme.primaryColor;
+
   return (
     <div
       style={{
@@ -147,8 +150,8 @@ export function MarketTypeSelector({
                 textAlign: "left",
                 width: "100%",
                 padding: "clamp(18px, 2.4vw, 22px)",
-                background: isSelected ? `${colors.neonCyan}10` : "#0f0f0f",
-                border: `1px solid ${isSelected ? `${colors.neonCyan}66` : "#ffffff0f"}`,
+                background: isSelected ? `${primaryColor}10` : "#0f0f0f",
+                border: `1px solid ${isSelected ? `${primaryColor}66` : "#ffffff0f"}`,
                 borderRadius: 14,
                 cursor: "pointer",
                 color: "white",
@@ -167,8 +170,8 @@ export function MarketTypeSelector({
                   width: 44,
                   height: 44,
                   borderRadius: 12,
-                  background: `${colors.neonCyan}1a`,
-                  color: colors.neonCyan,
+                  background: `${primaryColor}1a`,
+                  color: primaryColor,
                   display: "inline-flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -185,7 +188,7 @@ export function MarketTypeSelector({
                       fontSize: 16,
                       fontWeight: 700,
                       letterSpacing: "-0.01em",
-                      color: colors.neonCyan,
+                      color: primaryColor,
                     }}
                   >
                     {opt.label}
@@ -212,7 +215,7 @@ export function MarketTypeSelector({
                     flexDirection: "column",
                     gap: 4,
                     paddingLeft: 14,
-                    borderLeft: `2px solid ${colors.neonCyan}33`,
+                    borderLeft: `2px solid ${primaryColor}33`,
                     marginTop: 4,
                   }}
                 >

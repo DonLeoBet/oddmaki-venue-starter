@@ -5,6 +5,19 @@ export const SUGGESTED_TAGS = [
   "sports",
   "English Football",
   "Dutch Football",
+  "European Football",
+  "Spanish Football",
+  "Italian Football",
+  "German Football",
+  "French Football",
+  "Champions League",
+  "Europa League",
+  "La Liga",
+  "Serie A",
+  "Bundesliga",
+  "Ligue 1",
+  "Keuken Kampioen Divisie",
+  "outrights",
   "Friendly Games",
   "crypto",
   "defi",
@@ -31,16 +44,72 @@ export interface CategoryConfig {
 }
 
 export const CATEGORIES: CategoryConfig[] = [
-  { id: "eredivisie", label: "Eredivisie", matchTags: ["Eredivisie", "Dutch Football"] },
-  { id: "premier-league", label: "Premier League", matchTags: ["Premier League", "English Football"] },
-  { id: "champions-league", label: "Champions League", matchTags: ["Champions League", "European Football"] },
-  { id: "la-liga", label: "La Liga", matchTags: ["La Liga", "Spanish Football"] },
-  { id: "serie-a", label: "Serie A", matchTags: ["Serie A", "Italian Football"] },
-  { id: "bundesliga", label: "Bundesliga", matchTags: ["Bundesliga", "German Football"] },
-  { id: "friendly-games", label: "Friendly Games", matchTags: ["Friendly Games"] },
-  { id: "other-markets", label: "Other Markets", matchTags: ["politics", "crypto", "finance", "geopolitics", "tech"] },
+  {
+    id: "eredivisie",
+    label: "Eredivisie",
+    matchTags: ["Eredivisie"],
+  },
+  {
+    id: "keuken-kampioen",
+    label: "Keuken Kampioen",
+    matchTags: ["Keuken Kampioen Divisie"],
+  },
+  {
+    id: "premier-league",
+    label: "Premier League",
+    matchTags: ["Premier League"],
+  },
+  {
+    id: "champions-league",
+    label: "Champions League",
+    matchTags: ["Champions League"],
+  },
+  {
+    id: "europa-league",
+    label: "Europa League",
+    matchTags: ["Europa League"],
+  },
+  {
+    id: "la-liga",
+    label: "La Liga",
+    matchTags: ["La Liga"],
+  },
+  {
+    id: "serie-a",
+    label: "Serie A",
+    matchTags: ["Serie A"],
+  },
+  {
+    id: "bundesliga",
+    label: "Bundesliga",
+    matchTags: ["Bundesliga"],
+  },
+  {
+    id: "ligue-1",
+    label: "Ligue 1",
+    matchTags: ["Ligue 1"],
+  },
+  {
+    id: "crypto",
+    label: "Crypto",
+    matchTags: ["crypto", "price-market"],
+  },
+  {
+    id: "outrights",
+    label: "Outrights",
+    matchTags: ["outrights"],
+  },
+  {
+    id: "friendly-games",
+    label: "Friendly Games",
+    matchTags: ["Friendly Games"],
+  },
+  {
+    id: "other-markets",
+    label: "Other Markets",
+    matchTags: ["politics", "crypto", "finance", "geopolitics", "tech"],
+  },
 ];
-
 
 export type SortMode = "trending" | "new";
 

@@ -1,6 +1,14 @@
 import type { MatchCreationResult } from "@/lib/football/types";
-import { BOT_VENUE_ID, fixtureTag } from "@/lib/football/constants";
-import { fetchUpcomingFixtures } from "@/lib/football/fetch-upcoming-fixtures";
+
+import {
+  BOT_VENUE_ID,
+  fixtureTag,
+  FOOTBALL_LEAGUES,
+} from "@/lib/football/constants";
+import {
+  CRON_FIXTURE_DAYS_AHEAD,
+  fetchUpcomingFixtures,
+} from "@/lib/football/fetch-upcoming-fixtures";
 import { mapFixtureToMarketGroup } from "@/lib/football/map-fixture-to-market-group";
 import { ACTIVE_CHAIN_ID } from "@/lib/oddmaki/chain";
 import {
@@ -8,6 +16,7 @@ import {
   loadExistingFixtureTags,
 } from "@/lib/oddmaki/match-market-bot";
 import { createBotWalletContext } from "@/lib/oddmaki/server-bot-client";
+import { maybeDelayImportBatch } from "@/lib/rpc/concurrency";
 
 const LOG_PREFIX = "[cron/fetch-matches]";
 
@@ -23,7 +32,7 @@ export function logFetchMatchesError(message: string, error: unknown): void {
   console.error(
     LOG_PREFIX,
     message,
-    error instanceof Error ? error.stack ?? error.message : error,
+    error instanceof Error ? (error.stack ?? error.message) : error,
   );
 }
 
@@ -31,6 +40,8 @@ export interface FetchMatchesSummary {
   venueId: string;
   chainId: number;
   botAddress: string;
+  leagues: number;
+  daysAhead: number;
   fetched: number;
   skipped: number;
   created: number;
@@ -39,22 +50,40 @@ export interface FetchMatchesSummary {
 }
 
 /**
- * Core cron job: fetch API-Football fixtures and create OddMaki market groups
- * on venue 6 via the operator bot wallet.
+ * Core cron job: fetch upcoming fixtures for all configured leagues and create
+ * OddMaki market groups on venue 6 via the operator bot wallet (mnemonic).
  */
 export async function runFetchMatchesJob(): Promise<FetchMatchesSummary> {
+  const daysAhead = Number(
+    process.env.CRON_FIXTURE_DAYS_AHEAD ?? CRON_FIXTURE_DAYS_AHEAD,
+  );
+  const perLeague = Number(
+    process.env.CRON_FIXTURE_PER_LEAGUE ?? 20,
+  );
+  const leagueCount = Object.keys(FOOTBALL_LEAGUES).length;
+
   log("Starting football fixture sync", {
     venueId: BOT_VENUE_ID.toString(),
     chainId: ACTIVE_CHAIN_ID,
+    leagues: leagueCount,
+    daysAhead,
   });
 
   const { client, publicClient, address } = createBotWalletContext();
 
   log("Bot wallet initialized", { address });
 
-  const fixtures = await fetchUpcomingFixtures({ perLeague: 15 });
+  const fixtures = await fetchUpcomingFixtures({
+    perLeague,
+    maxDaysAhead: daysAhead,
+  });
 
-  log("Fetched upcoming fixtures from API-Football", { count: fixtures.length });
+  log("Fetched upcoming fixtures", {
+    count: fixtures.length,
+    leagues: leagueCount,
+    daysAhead,
+    perLeague,
+  });
 
   const existingTags = await loadExistingFixtureTags(client, BOT_VENUE_ID);
 
@@ -67,7 +96,11 @@ export async function runFetchMatchesJob(): Promise<FetchMatchesSummary> {
   let created = 0;
   let failed = 0;
 
-  for (const row of fixtures) {
+  for (let index = 0; index < fixtures.length; index++) {
+    const row = fixtures[index];
+
+    await maybeDelayImportBatch(index);
+
     const prepared = mapFixtureToMarketGroup(row);
     const tag = fixtureTag(prepared.fixtureId);
 
@@ -119,12 +152,19 @@ export async function runFetchMatchesJob(): Promise<FetchMatchesSummary> {
     }
   }
 
-  log("Fixture sync complete", { fetched: fixtures.length, skipped, created, failed });
+  log("Fixture sync complete", {
+    fetched: fixtures.length,
+    skipped,
+    created,
+    failed,
+  });
 
   return {
     venueId: BOT_VENUE_ID.toString(),
     chainId: ACTIVE_CHAIN_ID,
     botAddress: address,
+    leagues: leagueCount,
+    daysAhead,
     fetched: fixtures.length,
     skipped,
     created,

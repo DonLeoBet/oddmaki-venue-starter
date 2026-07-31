@@ -1,12 +1,14 @@
 "use client";
 
-import { use, useState, useEffect } from "react";
+import { Suspense, use, useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { useMarketGroupDetail } from "@/features/market-groups/hooks/useMarketGroupDetail";
 import { useGroupMarkets } from "@/features/market-groups/hooks/useGroupMarkets";
 import { getVenueId } from "@/config/venue.config";
 import { MarketGroupDetailHeader } from "@/features/market-groups/components/MarketGroupDetailHeader";
 import { GroupOutcomesList } from "@/features/market-groups/components/GroupOutcomesList";
+import { MatchMarketsDebugPanel } from "@/features/market-groups/components/MatchMarketsDebugPanel";
 import { MarketGroupDetailSkeleton } from "@/features/market-groups/components/MarketGroupDetailSkeleton";
 import { OrderbookPanel } from "@/features/orderbook/components/OrderbookPanel";
 import { UnifiedTradingPanel } from "@/features/trading/components/UnifiedTradingPanel";
@@ -18,20 +20,46 @@ import { RedeemPanel } from "@/features/resolution/components/RedeemPanel";
 import { MarketDescription } from "@/features/market-detail/components/MarketDescription";
 import { MarketDetailTabs } from "@/features/market-detail/components/MarketDetailTabs";
 import { PriceChartPanel } from "@/features/price-chart";
+import { parseFixtureTitle } from "@/lib/football/fixture-metadata";
+import { formatSubMarketLabel } from "@/lib/markets/marketDisplay";
+import { useBrand } from "@/features/brand";
 
 export default function MarketGroupDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
+  return (
+    <Suspense fallback={<MarketGroupDetailSkeleton />}>
+      <MarketGroupDetailPageContent params={params} />
+    </Suspense>
+  );
+}
+
+function MarketGroupDetailPageContent({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = use(params);
+  const searchParams = useSearchParams();
+  const showDebug =
+    process.env.NODE_ENV === "development" &&
+    searchParams.get("debug") === "1";
   const {
     data: group,
     isLoading: groupLoading,
     error,
   } = useMarketGroupDetail(id);
   const { data: markets, isLoading: marketsLoading } = useGroupMarkets(id);
+  const { locale } = useBrand();
   const [selectedMarketId, setSelectedMarketId] = useState<string | null>(null);
+  const [selectedOutcomeIndex, setSelectedOutcomeIndex] = useState<0 | 1>(0);
+
+  const handleSelectMarket = (marketId: string, outcomeIndex: 0 | 1 = 0) => {
+    setSelectedMarketId(marketId);
+    setSelectedOutcomeIndex(outcomeIndex);
+  };
 
   // Auto-select first active (non-placeholder) market when data loads
   useEffect(() => {
@@ -74,14 +102,25 @@ export default function MarketGroupDetailPage({
     );
   }
 
+  const fixtureTeams = parseFixtureTitle(group.marketQuestion) ?? undefined;
   const selectedMarket = markets?.find((m) => m.marketId === selectedMarketId);
+  const selectedMarketLabel =
+    selectedMarket ?
+      formatSubMarketLabel(selectedMarket.name, locale, fixtureTeams)
+    : undefined;
 
   return (
     <section className="flex flex-col gap-6 pt-4 pb-8 md:pt-6 md:pb-10">
       <MarketGroupDetailHeader
+        away={fixtureTeams?.away}
         group={group}
+        home={fixtureTeams?.home}
         selectedMarketId={selectedMarketId}
       />
+
+      {showDebug && (
+        <MatchMarketsDebugPanel groupTags={group.tags} markets={markets || []} />
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-[1fr_338px] gap-4 items-start">
         {/* Left column */}
@@ -89,7 +128,8 @@ export default function MarketGroupDetailPage({
           <GroupOutcomesList
             markets={markets || []}
             selectedMarketId={selectedMarketId}
-            onSelectMarket={setSelectedMarketId}
+            teams={fixtureTeams ?? undefined}
+            onSelectMarket={handleSelectMarket}
           />
 
           {group.status !== "Draft" && selectedMarket && (
@@ -138,7 +178,11 @@ export default function MarketGroupDetailPage({
                 />
               ) : (
                 <UnifiedTradingPanel
+                  key={selectedMarket.marketId}
+                  initialOutcomeIndex={selectedOutcomeIndex}
                   marketId={selectedMarket.marketId}
+                  marketLabel={selectedMarketLabel ?? selectedMarket.name}
+                  metadataURI={selectedMarket.metadataURI}
                   noPrice={selectedMarket.noPrice}
                   outcomes={selectedMarket.outcomes}
                   tickSize={selectedMarket.tickSize}

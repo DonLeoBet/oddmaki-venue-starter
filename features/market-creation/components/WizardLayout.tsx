@@ -3,6 +3,7 @@
 import { type ReactNode } from "react";
 
 import { colors, fonts } from "@/lib/tokens";
+import { BRAND_CONFIG } from "@/config/brand.config";
 
 interface StepInfo {
   number: number;
@@ -43,6 +44,7 @@ export function WizardLayout({
   children,
   footerExtra,
 }: WizardLayoutProps) {
+  const primaryColor = BRAND_CONFIG.theme.primaryColor;
   const progressPct = ((stepIndex + 1) / totalSteps) * 100;
   const backDisabled = !canGoBack || isSubmitting;
 
@@ -67,7 +69,7 @@ export function WizardLayout({
             position: "absolute",
             inset: 0,
             width: `${progressPct}%`,
-            background: colors.neonCyan,
+            background: primaryColor,
             transition: "width 0.3s ease",
           }}
         />
@@ -86,7 +88,7 @@ export function WizardLayout({
               width: 28,
               height: 28,
               borderRadius: "50%",
-              background: colors.neonCyan,
+              background: primaryColor,
               color: colors.darkBg,
               display: "flex",
               alignItems: "center",
@@ -189,8 +191,7 @@ export function WizardLayout({
             disabled={!canGoNext || isSubmitting}
             style={{
               padding: "10px 28px",
-              background:
-                !canGoNext || isSubmitting ? "#2a2a2a" : colors.neonCyan,
+              background: !canGoNext || isSubmitting ? "#2a2a2a" : primaryColor,
               border: "none",
               borderRadius: 8,
               color: !canGoNext || isSubmitting ? "#666" : colors.darkBg,
@@ -211,7 +212,7 @@ export function WizardLayout({
               alignItems: "center",
               gap: 6,
               padding: "10px 24px",
-              background: canGoNext ? colors.neonCyan : "#2a2a2a",
+              background: canGoNext ? primaryColor : "#2a2a2a",
               border: "none",
               borderRadius: 8,
               color: canGoNext ? colors.darkBg : "#666",
@@ -247,6 +248,8 @@ export function ReviewSection({
   title: string;
   children: ReactNode;
 }) {
+  const primaryColor = BRAND_CONFIG.theme.primaryColor;
+
   return (
     <div
       style={{
@@ -259,7 +262,7 @@ export function ReviewSection({
       <div
         style={{
           fontSize: 12,
-          color: colors.neonCyan,
+          color: primaryColor,
           fontWeight: 600,
           marginBottom: 12,
           fontFamily: fonts.sans,

@@ -4,14 +4,20 @@ import Image from "next/image";
 import { IconSvgProps } from "@/types";
 import { venueConfig } from "@/config/venue.config";
 
-export const Logo: React.FC<IconSvgProps> = ({ size = 36, width, height }) => (
-  <Image
-    alt={venueConfig.branding.name}
-    height={Number(height || size)}
-    src={venueConfig.branding.logo}
-    width={Number(width || size)}
-  />
-);
+export const Logo: React.FC<IconSvgProps> = ({ size = 36, width, height }) => {
+  const h = Number(height || size);
+  const w = width ? Number(width) : Math.round(h * (256 / 31));
+
+  return (
+    <Image
+      alt={venueConfig.branding.name}
+      className="h-auto w-auto max-w-[220px] object-contain object-left"
+      height={h}
+      src={venueConfig.branding.logo}
+      width={w}
+    />
+  );
+};
 
 export const DiscordIcon: React.FC<IconSvgProps> = ({
   size = 24,

@@ -2,17 +2,17 @@
 
 import { Button } from "@heroui/button";
 import NextLink from "next/link";
-import { useAccount } from "wagmi";
 
 import { useCanCreateMarket } from "@/features/access-control";
+import { useSession } from "@/features/auth";
 import { getVenueId } from "@/config/venue.config";
 
 export function CreateMarketButton() {
   const venueId = getVenueId();
-  const { isConnected } = useAccount();
+  const { isLoggedIn } = useSession();
   const { data: canCreate } = useCanCreateMarket(venueId);
 
-  if (!isConnected || !canCreate) return null;
+  if (!isLoggedIn || !canCreate) return null;
 
   return (
     <Button

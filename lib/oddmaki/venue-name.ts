@@ -1,15 +1,13 @@
 import { cache } from "react";
-import { createPublicClient, http } from "viem";
 import { VenueFacetABI } from "@oddmaki-protocol/sdk";
-
-import { ACTIVE_CHAIN } from "./chain";
-import { DIAMOND_ADDRESS } from "./constants";
 
 import {
   DEFAULT_VENUE_NAME,
   getConfiguredVenueName,
   getVenueId,
 } from "@/config/venue.config";
+import { DIAMOND_ADDRESS } from "./constants";
+import { cachedReadContract, getPublicClient } from "@/lib/rpc/baseClient";
 
 /**
  * Server-side venue name resolution for metadata / SSR.
@@ -30,16 +28,15 @@ export const resolveVenueName = cache(async (): Promise<string> => {
   if (venueId === undefined) return DEFAULT_VENUE_NAME;
 
   try {
-    const client = createPublicClient({
-      chain: ACTIVE_CHAIN,
-      transport: http(),
-    });
+    const client = getPublicClient({ bot: false });
 
-    const venue = (await client.readContract({
+    const venue = (await cachedReadContract(client, {
       address: DIAMOND_ADDRESS,
       abi: VenueFacetABI,
       functionName: "getVenue",
       args: [venueId],
+    }, {
+      cacheKey: `venue:${venueId}:name`,
     })) as { name?: string };
 
     return venue.name?.trim() || DEFAULT_VENUE_NAME;

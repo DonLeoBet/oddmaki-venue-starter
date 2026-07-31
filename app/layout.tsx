@@ -5,6 +5,7 @@ import clsx from "clsx";
 
 import { Providers } from "./providers";
 
+import { BRAND_CONFIG } from "@/config/brand.config";
 import { venueConfig } from "@/config/venue.config";
 import { resolveVenueName } from "@/lib/oddmaki/venue-name";
 import { fontSans } from "@/config/fonts";
@@ -58,8 +59,10 @@ export default function RootLayout({
             </main>
             <footer className="w-full flex items-center justify-center py-3">
               <span className="text-default-500 text-sm">
-                <p>&copy; {new Date().getFullYear()} Poly.Football. All rights reserved.</p>
-
+                <p>
+                  &copy; {new Date().getFullYear()} {BRAND_CONFIG.name}. All
+                  rights reserved.
+                </p>
               </span>
             </footer>
           </div>

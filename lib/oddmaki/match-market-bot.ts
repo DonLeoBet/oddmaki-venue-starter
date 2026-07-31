@@ -1,19 +1,42 @@
 import type { OddMakiClient } from "@oddmaki-protocol/sdk";
-import type { PreparedMatchMarketGroup, MatchCreationResult } from "@/lib/football/types";
-import { fixtureTag } from "@/lib/football/constants";
+import type {
+  OutrightCreationResult,
+  PreparedMatchMarketGroup,
+  PreparedOutrightMarketGroup,
+} from "@/lib/football/types";
+
 import {
   MarketGroupFacetABI,
   VenueFacetABI,
+  formatAncillaryData,
 } from "@oddmaki-protocol/sdk";
-import { decodeEventLog, parseEther, parseUnits, type PublicClient } from "viem";
+import {
+  decodeEventLog,
+  parseEther,
+  parseUnits,
+  type PublicClient,
+} from "viem";
 
+import { fixtureTag, outrightTag } from "@/lib/football/constants";
 import {
   DIAMOND_ADDRESS,
   USDC_ADDRESS,
   USDC_DECIMALS,
 } from "@/lib/oddmaki/constants";
+import { cachedReadContract } from "@/lib/rpc/baseClient";
 
 const WAIT_MS = 2000;
+
+interface PreparedMarketGroupPayload {
+  title: string;
+  description: string;
+  tags: string[];
+  outcomes: Array<{ name: string; question: string; description: string }>;
+  tickSize: "0.01";
+  additionalReward: number;
+  liveness: number;
+  activateImmediately: true;
+}
 
 function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -66,23 +89,20 @@ async function waitForAllowance(
 
 type Address = `0x${string}`;
 
-/**
- * Load all fixture-* tags already present on venue markets/groups (subgraph).
- */
-export async function loadExistingFixtureTags(
+async function collectAutomationTags(
   client: OddMakiClient,
   venueId: bigint,
+  prefix: string,
 ): Promise<Set<string>> {
   const tags = new Set<string>();
   const pageSize = 100;
 
-  // Market groups (primary path for match markets)
   for (let skip = 0; ; skip += pageSize) {
     const result = (await client.public.getMarketGroups({
       venueId,
       first: pageSize,
       skip,
-    })) as { marketGroups?: { tags?: string[]; status?: string }[] };
+    })) as { marketGroups?: { tags?: string[] }[] };
 
     const groups = result.marketGroups ?? [];
 
@@ -90,14 +110,13 @@ export async function loadExistingFixtureTags(
 
     for (const group of groups) {
       for (const tag of group.tags ?? []) {
-        if (tag.startsWith("fixture-")) tags.add(tag);
+        if (tag.startsWith(prefix)) tags.add(tag);
       }
     }
 
     if (groups.length < pageSize) break;
   }
 
-  // Standalone markets (defensive — skip duplicates if any were created individually)
   for (let skip = 0; ; skip += pageSize) {
     const result = (await client.public.getMarketsWithPricing({
       venueId,
@@ -112,7 +131,7 @@ export async function loadExistingFixtureTags(
 
     for (const market of markets) {
       for (const tag of market.tags ?? []) {
-        if (tag.startsWith("fixture-")) tags.add(tag);
+        if (tag.startsWith(prefix)) tags.add(tag);
       }
     }
 
@@ -122,6 +141,20 @@ export async function loadExistingFixtureTags(
   return tags;
 }
 
+export async function loadExistingFixtureTags(
+  client: OddMakiClient,
+  venueId: bigint,
+): Promise<Set<string>> {
+  return collectAutomationTags(client, venueId, "fixture-");
+}
+
+export async function loadExistingOutrightTags(
+  client: OddMakiClient,
+  venueId: bigint,
+): Promise<Set<string>> {
+  return collectAutomationTags(client, venueId, "outright-");
+}
+
 async function ensureUsdcApproval(
   client: OddMakiClient,
   publicClient: PublicClient,
@@ -129,11 +162,13 @@ async function ensureUsdcApproval(
   venueId: bigint,
   additionalReward: bigint,
 ): Promise<`0x${string}` | null> {
-  const venue = (await publicClient.readContract({
+  const venue = (await cachedReadContract(publicClient, {
     address: DIAMOND_ADDRESS,
     abi: VenueFacetABI,
     functionName: "getVenue",
     args: [venueId],
+  }, {
+    cacheKey: `venue:${venueId}:fees`,
   })) as { marketCreationFee?: bigint; umaRewardAmount?: bigint };
 
   const creationFee = BigInt(venue.marketCreationFee ?? 0);
@@ -162,17 +197,17 @@ async function ensureUsdcApproval(
   return hash;
 }
 
-/**
- * Create and activate an OddMaki market group for a prepared football fixture.
- */
-export async function createMatchMarketGroupOnChain(
+async function createPreparedMarketGroupOnChain(
   client: OddMakiClient,
   publicClient: PublicClient,
   venueId: bigint,
   signer: Address,
-  prepared: PreparedMatchMarketGroup,
-): Promise<MatchCreationResult> {
-  const tag = fixtureTag(prepared.fixtureId);
+  prepared: PreparedMarketGroupPayload,
+  logTag: string,
+): Promise<
+  | { status: "created"; groupId: string; txHashes: string[] }
+  | { status: "failed"; error: string }
+> {
   const txHashes: string[] = [];
 
   try {
@@ -180,7 +215,6 @@ export async function createMatchMarketGroupOnChain(
 
     if (!canCreate) {
       return {
-        fixtureId: prepared.fixtureId,
         status: "failed",
         error: `Bot wallet ${signer} cannot create markets on venue ${venueId}`,
       };
@@ -230,7 +264,10 @@ export async function createMatchMarketGroupOnChain(
       const addHash = await client.market.addMarketToGroup({
         marketGroupId: groupId,
         marketName: outcome.name.trim(),
-        marketQuestion: outcome.question.trim(),
+        marketQuestion: formatAncillaryData({
+          title: outcome.question.trim(),
+          description: outcome.description.trim(),
+        }),
       });
 
       txHashes.push(addHash);
@@ -248,7 +285,6 @@ export async function createMatchMarketGroupOnChain(
     }
 
     return {
-      fixtureId: prepared.fixtureId,
       status: "created",
       groupId: groupId.toString(),
       txHashes,
@@ -257,9 +293,77 @@ export async function createMatchMarketGroupOnChain(
     const message = error instanceof Error ? error.message : String(error);
 
     return {
-      fixtureId: prepared.fixtureId,
       status: "failed",
-      error: `[${tag}] ${message}`,
+      error: `[${logTag}] ${message}`,
     };
   }
+}
+
+export async function createMatchMarketGroupOnChain(
+  client: OddMakiClient,
+  publicClient: PublicClient,
+  venueId: bigint,
+  signer: Address,
+  prepared: PreparedMatchMarketGroup,
+) {
+  const tag = fixtureTag(prepared.fixtureId);
+  const result = await createPreparedMarketGroupOnChain(
+    client,
+    publicClient,
+    venueId,
+    signer,
+    prepared,
+    tag,
+  );
+
+  if (result.status === "created") {
+    return {
+      fixtureId: prepared.fixtureId,
+      status: "created" as const,
+      groupId: result.groupId,
+      txHashes: result.txHashes,
+    };
+  }
+
+  return {
+    fixtureId: prepared.fixtureId,
+    status: "failed" as const,
+    error: result.error,
+  };
+}
+
+export async function createOutrightMarketGroupOnChain(
+  client: OddMakiClient,
+  publicClient: PublicClient,
+  venueId: bigint,
+  signer: Address,
+  prepared: PreparedOutrightMarketGroup,
+): Promise<OutrightCreationResult> {
+  const tag = outrightTag(prepared.leagueId, prepared.season);
+  const result = await createPreparedMarketGroupOnChain(
+    client,
+    publicClient,
+    venueId,
+    signer,
+    prepared,
+    tag,
+  );
+
+  if (result.status === "created") {
+    return {
+      leagueId: prepared.leagueId,
+      season: prepared.season,
+      status: "created",
+      groupId: result.groupId,
+      txHashes: result.txHashes,
+      teamCount: prepared.outcomes.length,
+    };
+  }
+
+  return {
+    leagueId: prepared.leagueId,
+    season: prepared.season,
+    status: "failed",
+    error: result.error,
+  };
 }

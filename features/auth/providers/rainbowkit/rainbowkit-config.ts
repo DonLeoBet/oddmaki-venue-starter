@@ -1,35 +1,53 @@
 /**
- * RainbowKit Wagmi Configuration
+ * RainbowKit — wallet-only login (MetaMask, Coinbase, WalletConnect, injected).
  *
- * With `NEXT_PUBLIC_WALLETCONNECT_ID` set, uses RainbowKit's
- * `getDefaultConfig` to wire up the full connector suite — including
- * WalletConnect, which is what lets mobile wallets connect via QR.
+ * Use for admin/dev or crypto-native users. Does NOT support Gmail / X login —
+ * for that, set NEXT_PUBLIC_AUTH_PROVIDER=privy (see config/auth.config.ts).
  *
- * Without it, falls back to wagmi's injected-connector default so the
- * starter boots out of the box (browser-extension wallets only — no
- * mobile). Get a free project ID at https://cloud.reown.com to enable
- * mobile support.
+ * WalletConnect requires your domain on https://cloud.reown.com allowlist.
  */
 
-import { getDefaultConfig } from "@rainbow-me/rainbowkit";
+import { connectorsForWallets } from "@rainbow-me/rainbowkit";
+import {
+  coinbaseWallet,
+  injectedWallet,
+  metaMaskWallet,
+  walletConnectWallet,
+} from "@rainbow-me/rainbowkit/wallets";
 import { createConfig } from "wagmi";
+
+import { isWalletConnectEnabled } from "@/config/auth.config";
+import { BRAND_CONFIG } from "@/config/brand.config";
+import { venueConfig } from "@/config/venue.config";
 
 import { supportedChains, transports } from "../../utils/wagmi-shared";
 
-import { venueConfig } from "@/config/venue.config";
-
 const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_ID;
 
-export const rainbowkitWagmiConfig = projectId
-  ? getDefaultConfig({
-      appName: venueConfig.branding.name,
-      projectId,
-      chains: supportedChains,
-      transports,
-      ssr: true,
-    })
-  : createConfig({
-      chains: supportedChains,
-      transports,
-      ssr: true,
-    });
+const walletGroups = [
+  {
+    groupName: "Popular",
+    wallets: [metaMaskWallet, coinbaseWallet, injectedWallet],
+  },
+  ...(isWalletConnectEnabled()
+    ? [
+        {
+          groupName: "Mobile",
+          wallets: [walletConnectWallet],
+        },
+      ]
+    : []),
+];
+
+const connectors = connectorsForWallets(walletGroups, {
+  appName: venueConfig.branding.name,
+  projectId: projectId ?? "00000000000000000000000000000000",
+  appUrl: `https://${BRAND_CONFIG.domain}`,
+});
+
+export const rainbowkitWagmiConfig = createConfig({
+  chains: supportedChains,
+  transports,
+  connectors,
+  ssr: true,
+});

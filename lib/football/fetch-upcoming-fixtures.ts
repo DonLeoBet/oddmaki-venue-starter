@@ -1,97 +1,159 @@
-import type {
-  ApiFootballFixtureRow,
-  ApiFootballFixturesResponse,
-} from "./types";
-import { API_FOOTBALL_HOST, FOOTBALL_LEAGUES } from "./constants";
+import type { ApiFootballFixtureRow } from "./types";
+
+import {
+  fetchFixturesByLeague,
+  fetchFixturesByLeagueDateRange,
+} from "./api-football-client";
+import { FOOTBALL_LEAGUES } from "./constants";
+import {
+  getFixtureMinKickoffDateYmd,
+  getFixtureMinKickoffUnix,
+} from "./fixture-window";
 
 const UPCOMING_STATUSES = new Set(["NS", "TBD"]);
 
-function currentSeasonYear(): number {
-  const now = new Date();
-  const month = now.getUTCMonth() + 1;
+/** Primary `next` window when querying api-sports.io */
+const DEFAULT_NEXT_COUNT = 5;
 
-  // European leagues: season starts ~Aug. Before August, use previous year.
-  return month >= 8 ? now.getUTCFullYear() : now.getUTCFullYear() - 1;
+/** Fallback window: today → +N days (covers pre-season kickoffs in August) */
+const DEFAULT_DATE_FALLBACK_DAYS = 30;
+
+/** Cron horizon — avoid locking collateral on far-future postponed fixtures */
+export const CRON_FIXTURE_DAYS_AHEAD = 14;
+
+import { currentSeasonYear } from "./season";
+
+function formatDateYmd(date: Date): string {
+  return date.toISOString().slice(0, 10);
 }
 
-function getApiKey(): string {
-  const key =
-    process.env.API_FOOTBALL_KEY ??
-    process.env.API_FOOTBALL_API_KEY ??
-    process.env.FOOTBALL_API_KEY;
+function upcomingDateWindow(maxDaysAhead?: number): { from: string; to: string } {
+  const fromDate = new Date(`${getFixtureMinKickoffDateYmd()}T00:00:00.000Z`);
+  const toDate = new Date(fromDate);
+  const days = maxDaysAhead ?? DEFAULT_DATE_FALLBACK_DAYS;
 
-  if (!key?.trim()) {
-    throw new Error(
-      "Missing API-Football key. Set API_FOOTBALL_KEY (or API_FOOTBALL_API_KEY).",
-    );
-  }
+  toDate.setUTCDate(toDate.getUTCDate() + days);
 
-  return key.trim();
+  return {
+    from: formatDateYmd(fromDate),
+    to: formatDateYmd(toDate),
+  };
+}
+
+function filterMinKickoff(rows: ApiFootballFixtureRow[]): ApiFootballFixtureRow[] {
+  const minUnix = getFixtureMinKickoffUnix();
+
+  return rows.filter((row) => row.fixture.timestamp >= minUnix);
+}
+
+function filterWithinHorizon(
+  rows: ApiFootballFixtureRow[],
+  maxDaysAhead?: number,
+): ApiFootballFixtureRow[] {
+  const minFiltered = filterMinKickoff(rows);
+
+  if (maxDaysAhead == null) return minFiltered;
+
+  const nowUnix = Math.max(
+    Math.floor(Date.now() / 1000),
+    getFixtureMinKickoffUnix(),
+  );
+  const cutoffUnix = nowUnix + maxDaysAhead * 86_400;
+
+  return minFiltered.filter(
+    (row) =>
+      row.fixture.timestamp >= nowUnix - 3_600 &&
+      row.fixture.timestamp <= cutoffUnix,
+  );
+}
+
+function filterUpcoming(
+  rows: ApiFootballFixtureRow[],
+): ApiFootballFixtureRow[] {
+  return rows.filter((row) => UPCOMING_STATUSES.has(row.fixture.status.short));
 }
 
 async function fetchLeagueFixtures(
   leagueId: number,
   season: number,
   next: number,
+  maxDaysAhead?: number,
 ): Promise<ApiFootballFixtureRow[]> {
-  const url = new URL(`https://${API_FOOTBALL_HOST}/fixtures`);
-  url.searchParams.set("league", String(leagueId));
-  url.searchParams.set("season", String(season));
-  url.searchParams.set("next", String(next));
-
-  const response = await fetch(url, {
-    headers: {
-      "x-apisports-key": getApiKey(),
-    },
-    next: { revalidate: 0 },
-  });
-
-  if (!response.ok) {
-    const body = await response.text().catch(() => "");
-
-    throw new Error(
-      `API-Football HTTP ${response.status} for league ${leagueId}: ${body.slice(0, 300)}`,
-    );
-  }
-
-  const payload = (await response.json()) as ApiFootballFixturesResponse;
-
-  if (payload.errors) {
-    const message = Array.isArray(payload.errors)
-      ? payload.errors.join("; ")
-      : Object.values(payload.errors).join("; ");
-
-    throw new Error(`API-Football error for league ${leagueId}: ${message}`);
-  }
-
-  return (payload.response ?? []).filter((row) =>
-    UPCOMING_STATUSES.has(row.fixture.status.short),
+  const byNext = filterUpcoming(
+    await fetchFixturesByLeague({ leagueId, season, next }),
   );
+
+  if (byNext.length > 0) {
+    return filterWithinHorizon(byNext, maxDaysAhead);
+  }
+
+  const { from, to } = upcomingDateWindow(maxDaysAhead);
+
+  for (const seasonCandidate of [season, season + 1]) {
+    const byDate = filterUpcoming(
+      await fetchFixturesByLeagueDateRange({
+        leagueId,
+        season: seasonCandidate,
+        from,
+        to,
+      }),
+    );
+
+    if (byDate.length > 0) {
+      console.info(
+        `[fetch-upcoming-fixtures] league ${leagueId}: next=${next} returned 0 — fallback ${from}→${to} season=${seasonCandidate} returned ${byDate.length}`,
+      );
+
+      return filterWithinHorizon(byDate, maxDaysAhead);
+    }
+  }
+
+  console.info(
+    `[fetch-upcoming-fixtures] league ${leagueId}: next=${next} and date fallback ${from}→${to} (seasons ${season}/${season + 1}) returned 0`,
+  );
+
+  return [];
 }
 
 export interface FetchUpcomingFixturesOptions {
-  /** Number of upcoming fixtures per league (default 15) */
+  /** `next` param per league (default 5) */
   perLeague?: number;
   season?: number;
+  /** Only include fixtures kicking off within this many days (cron safety window) */
+  maxDaysAhead?: number;
+  /** Fetch a single league only (reduces API load for admin filters) */
+  leagueId?: number;
 }
 
 /**
- * Fetch upcoming not-started fixtures for Eredivisie (88) and Premier League (39).
+ * Fetch upcoming not-started fixtures for all configured FOOTBALL_LEAGUES.
+ * Tries `next=N` first; during summer break falls back to today → +30 days.
  */
 export async function fetchUpcomingFixtures(
   options: FetchUpcomingFixturesOptions = {},
 ): Promise<ApiFootballFixtureRow[]> {
   const season = options.season ?? currentSeasonYear();
-  const perLeague = options.perLeague ?? 15;
+  const next = options.perLeague ?? DEFAULT_NEXT_COUNT;
+  const { maxDaysAhead } = options;
 
-  const leagueIds = Object.values(FOOTBALL_LEAGUES).map((l) => l.id);
-  const batches = await Promise.all(
-    leagueIds.map((id) => fetchLeagueFixtures(id, season, perLeague)),
-  );
+  const leagueIds =
+    options.leagueId != null ?
+      [options.leagueId]
+    : Object.values(FOOTBALL_LEAGUES).map((l) => l.id);
+
+  const batches: ApiFootballFixtureRow[][] = [];
+
+  for (const id of leagueIds) {
+    try {
+      batches.push(await fetchLeagueFixtures(id, season, next, maxDaysAhead));
+    } catch (error) {
+      console.error(`[fetch-upcoming-fixtures] league ${id} failed`, error);
+      batches.push([]);
+    }
+  }
 
   const merged = batches.flat();
 
-  // Stable sort: earliest kickoff first
   merged.sort((a, b) => a.fixture.timestamp - b.fixture.timestamp);
 
   return merged;

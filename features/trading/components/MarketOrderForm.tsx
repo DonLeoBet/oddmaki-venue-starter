@@ -4,11 +4,11 @@ import { useState, useMemo } from "react";
 import { Button } from "@heroui/button";
 import { Select, SelectItem } from "@heroui/select";
 import { Divider } from "@heroui/divider";
-import { useAccount } from "wagmi";
 import { previewMarketBuy } from "@oddmaki-protocol/sdk";
 
 import { usePlaceMarketOrder } from "../hooks/usePlaceMarketOrder";
 
+import { useSession } from "@/features/auth";
 import { useTokenBalance } from "@/features/wallet";
 import { ChevronDownIcon } from "@/components/icons";
 import { useMarketFees } from "@/features/market-detail/hooks/useMarketFees";
@@ -51,7 +51,7 @@ export function MarketOrderForm({
   const isBuy = side === "BUY";
   const sideLabel = isBuy ? "Buy" : "Sell";
   const sideColor = isBuy ? "primary" : "secondary";
-  const { isConnected } = useAccount();
+  const { isLoggedIn } = useSession();
   const { startPlaceMarketOrder, flow } = usePlaceMarketOrder();
   const { data: canTrade = true } = useCanTradeOnMarket(
     marketId ? BigInt(marketId) : undefined,
@@ -86,7 +86,7 @@ export function MarketOrderForm({
   const isValid = !isNaN(amountNum) && amountNum > 0;
   const hasInsufficientBalance =
     isBuy &&
-    isConnected &&
+    isLoggedIn &&
     !isNaN(amountNum) &&
     amountNum > 0 &&
     balanceNum < amountNum;
@@ -147,7 +147,7 @@ export function MarketOrderForm({
     : "No takeable liquidity";
 
   const tradeButtonLabel = (() => {
-    if (!isConnected) return "Connect Wallet";
+    if (!isLoggedIn) return "Connect Wallet";
     if (!canTrade) return "Access Restricted";
     if (!hasTakeableLiquidity) return "No Liquidity";
     if (hasInsufficientBalance) return "Insufficient USDC";
@@ -194,7 +194,7 @@ export function MarketOrderForm({
         ))}
         <Button
           className="min-w-0 h-6 px-2 bg-default-100 text-xs flex-1"
-          isDisabled={!isConnected}
+          isDisabled={!isLoggedIn}
           size="sm"
           variant="flat"
           onPress={() => setAmount(walletBalance)}
@@ -298,7 +298,7 @@ export function MarketOrderForm({
         className="w-full"
         color={sideColor as "primary" | "secondary"}
         isDisabled={
-          !isConnected ||
+          !isLoggedIn ||
           !isValid ||
           !canTrade ||
           !hasTakeableLiquidity ||

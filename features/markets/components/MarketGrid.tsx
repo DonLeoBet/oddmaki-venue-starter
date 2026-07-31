@@ -8,6 +8,7 @@ import { useSearchParams } from "next/navigation";
 
 import { useUnifiedFeed } from "../hooks/useUnifiedFeed";
 import { useFilterToggle } from "../hooks/useFilterToggle";
+import { sortUnifiedFeedItems, filterFeedByMinKickoff, filterFeedHideLegacyOutrights } from "../utils/kickoffSort";
 
 import { MarketCard } from "./MarketCard";
 import { MarketSkeleton } from "./MarketSkeleton";
@@ -15,6 +16,7 @@ import { EmptyState } from "./EmptyState";
 import { MarketStatusFilter } from "./MarketStatusFilter";
 
 import { MarketGroupCard } from "@/features/market-groups/components/MarketGroupCard";
+import { MarketSearchResults } from "./MarketSearchResults";
 import {
   PriceSeriesCard,
   useSeriesCurrentWindows,
@@ -25,6 +27,7 @@ export function MarketGrid() {
   const searchParams = useSearchParams();
   const selectedCategory = searchParams.get("category");
   const sortParam = searchParams.get("sort");
+  const searchQuery = searchParams.get("q")?.trim() ?? "";
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("Active");
   const { showFilters } = useFilterToggle();
 
@@ -69,8 +72,11 @@ export function MarketGrid() {
       return item.data.status === statusFilter;
     });
 
-    return result;
-  }, [items, selectedCategory, statusFilter]);
+    result = filterFeedByMinKickoff(result);
+    result = filterFeedHideLegacyOutrights(result);
+
+    return sortUnifiedFeedItems(result, sortBy);
+  }, [items, selectedCategory, statusFilter, sortBy]);
 
   // The subgraph no longer denormalizes a series' current window, so derive it
   // for the visible series in one batched query and pass it to each card.
@@ -108,6 +114,14 @@ export function MarketGrid() {
         {Array.from({ length: 16 }).map((_, i) => (
           <MarketSkeleton key={`m-${i}`} />
         ))}
+      </div>
+    );
+  }
+
+  if (searchQuery.length >= 2) {
+    return (
+      <div className="flex flex-1 flex-col gap-4">
+        <MarketSearchResults query={searchQuery} />
       </div>
     );
   }

@@ -12,8 +12,9 @@ import { StandardMarketWizard } from "./standard/StandardMarketWizard";
 
 import { useVenueData } from "@/features/venue/hooks/useVenueData";
 import { getVenueId } from "@/config/venue.config";
+import { BRAND_CONFIG } from "@/config/brand.config";
 import { USDC_DECIMALS } from "@/lib/oddmaki/constants";
-import { colors, fonts } from "@/lib/tokens";
+import { fonts } from "@/lib/tokens";
 
 interface MarketCreationWizardProps {
   onClose?: () => void;
@@ -137,7 +138,7 @@ export function MarketCreationWizard({ onClose }: MarketCreationWizardProps) {
           />
         </svg>
         Change market type ·{" "}
-        <span style={{ color: colors.neonCyan, fontWeight: 600 }}>
+        <span style={{ color: BRAND_CONFIG.theme.primaryColor, fontWeight: 600 }}>
           {marketType === "standard"
             ? "Binary Market"
             : marketType === "group"

@@ -53,7 +53,7 @@ export function StepPriceMeta({
         <textarea
           placeholder={
             autoDescription ||
-            "Resolves Above if Pyth ETH/USD ≥ $4,000 at close time."
+            "Will the price of ETH be higher than $4,000 at Jan 1, 2027, 12:00 PM (UTC)? Market resolves 100% automatically via decentralized Pyth Network data."
           }
           rows={3}
           style={{ ...inputStyle, resize: "vertical" }}

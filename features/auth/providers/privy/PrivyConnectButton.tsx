@@ -3,17 +3,15 @@
 import type { ConnectButtonProps } from "../../types";
 
 import React from "react";
-import { usePrivy } from "@privy-io/react-auth";
-import { useAccount } from "wagmi";
 import { Button } from "@heroui/button";
 
 import { UserSettings } from "../../components/UserSettings";
+import { useSession } from "../../hooks/useSession";
 
 export function PrivyConnectButton(_props: ConnectButtonProps) {
-  const { ready, authenticated, login, logout } = usePrivy();
-  const { address } = useAccount();
+  const { isReady, isLoggedIn, address, login, logout } = useSession();
 
-  if (!ready) {
+  if (!isReady) {
     return (
       <Button isDisabled isLoading size="sm">
         Loading...
@@ -21,7 +19,7 @@ export function PrivyConnectButton(_props: ConnectButtonProps) {
     );
   }
 
-  if (!authenticated || !address) {
+  if (!isLoggedIn || !address) {
     return (
       <Button
         className="sm:text-sm px-3 sm:px-4 min-w-0 font-semibold"
@@ -29,7 +27,7 @@ export function PrivyConnectButton(_props: ConnectButtonProps) {
         size="sm"
         onPress={() => login()}
       >
-        Connect
+        Log in
       </Button>
     );
   }

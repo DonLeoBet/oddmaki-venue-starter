@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { ThemeProvider as NextThemesProvider } from "next-themes";
 import { Toaster } from "sonner";
 
-import { AuthProvider } from "@/features/auth";
+import { AuthProvider, SessionDebug } from "@/features/auth";
 import { RealtimeProvider } from "@/features/realtime";
 import { FilterToggleProvider } from "@/features/markets/hooks/useFilterToggle";
 
@@ -35,6 +35,7 @@ export function Providers({ children, themeProps }: ProvidersProps) {
           <NextThemesProvider {...themeProps}>
             <FilterToggleProvider>
               {children}
+              <SessionDebug />
               <Toaster closeButton richColors position="bottom-right" />
             </FilterToggleProvider>
           </NextThemesProvider>

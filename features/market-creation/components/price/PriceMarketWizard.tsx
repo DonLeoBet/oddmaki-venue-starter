@@ -11,6 +11,10 @@ import {
 } from "../../types";
 import { usePriceMarketCreation } from "../../hooks/usePriceMarketCreation";
 import { PYTH_FEED_ID_REGEX } from "../../lib/pythFeeds";
+import {
+  formatPriceMarketDescription,
+  formatPriceMarketTitle,
+} from "@/lib/price-market/format-price-market-copy";
 import { MarketCreationSuccess } from "../MarketCreationSuccess";
 import { WizardLayout } from "../WizardLayout";
 
@@ -266,44 +270,36 @@ export function PriceMarketWizard({
   );
 
   const autoTitle = useMemo(() => {
-    const symbol = formData.feedSymbol || "Asset";
+    if (!closeDisplayUtc) return "";
 
-    if (
-      formData.useStrikePrice &&
-      formData.strikePrice &&
-      Number(formData.strikePrice) > 0
-    ) {
-      return `${symbol} Above/Below $${Number(formData.strikePrice).toLocaleString()}`;
-    }
-    if (closeDisplayUtc) {
-      return `${symbol} Up/Down by ${closeDisplayUtc}`;
-    }
-
-    return "";
+    return formatPriceMarketTitle({
+      feedSymbol: formData.feedSymbol,
+      feedId: formData.pythFeedId,
+      expiryTimeUtc: closeDisplayUtc,
+      useStrikePrice: formData.useStrikePrice,
+      strikePrice: Number(formData.strikePrice),
+    });
   }, [
     formData.feedSymbol,
+    formData.pythFeedId,
     formData.useStrikePrice,
     formData.strikePrice,
     closeDisplayUtc,
   ]);
 
   const autoDescription = useMemo(() => {
-    const symbol = formData.feedSymbol || "the asset";
+    if (!closeDisplayUtc) return "";
 
-    if (
-      formData.useStrikePrice &&
-      Number(formData.strikePrice) > 0 &&
-      closeDisplayUtc
-    ) {
-      return `Resolves Above if Pyth ${symbol} ≥ $${Number(formData.strikePrice).toLocaleString()} at ${closeDisplayUtc}, otherwise Below.`;
-    }
-    if (closeDisplayUtc) {
-      return `Resolves Up if Pyth ${symbol} closes higher than at creation by ${closeDisplayUtc}, otherwise Down.`;
-    }
-
-    return "";
+    return formatPriceMarketDescription({
+      feedSymbol: formData.feedSymbol,
+      feedId: formData.pythFeedId,
+      expiryTimeUtc: closeDisplayUtc,
+      useStrikePrice: formData.useStrikePrice,
+      strikePrice: Number(formData.strikePrice),
+    });
   }, [
     formData.feedSymbol,
+    formData.pythFeedId,
     formData.useStrikePrice,
     formData.strikePrice,
     closeDisplayUtc,

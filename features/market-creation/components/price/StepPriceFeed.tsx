@@ -13,7 +13,8 @@ import {
   fetchPythLatest,
 } from "../../lib/pythFeeds";
 
-import { colors, fonts } from "@/lib/tokens";
+import { fonts } from "@/lib/tokens";
+import { BRAND_CONFIG } from "@/config/brand.config";
 
 interface StepPriceFeedProps {
   formData: PriceMarketFormData;
@@ -24,6 +25,7 @@ interface StepPriceFeedProps {
 }
 
 export function StepPriceFeed({ formData, updateField }: StepPriceFeedProps) {
+  const primaryColor = BRAND_CONFIG.theme.primaryColor;
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
   const [loadingPrice, setLoadingPrice] = useState(false);
 
@@ -60,7 +62,7 @@ export function StepPriceFeed({ formData, updateField }: StepPriceFeedProps) {
   const selectFeed = (id: string, symbol: string) => {
     updateField("pythFeedId", id);
     updateField("feedSymbol", symbol);
-    const known = PYTH_FEED_MAP.get(id as `0x${string}`);
+    const known = PYTH_FEED_MAP.get(id.toLowerCase() as `0x${string}`);
 
     if (known) updateField("priceExpo", known.expo);
   };
@@ -95,8 +97,8 @@ export function StepPriceFeed({ formData, updateField }: StepPriceFeedProps) {
                 key={feed.id}
                 style={{
                   padding: "10px 14px",
-                  background: selected ? `${colors.neonCyan}14` : "#0f0f0f",
-                  border: `1px solid ${selected ? `${colors.neonCyan}66` : "#ffffff14"}`,
+                  background: selected ? `${primaryColor}14` : "#0f0f0f",
+                  border: `1px solid ${selected ? `${primaryColor}66` : "#ffffff14"}`,
                   borderRadius: 10,
                   color: selected ? "white" : "#bbb",
                   fontSize: 12,
@@ -107,9 +109,9 @@ export function StepPriceFeed({ formData, updateField }: StepPriceFeedProps) {
                 type="button"
                 onClick={() => selectFeed(feed.id, feed.symbol)}
               >
-                <div style={{ fontWeight: 700 }}>{feed.symbol}</div>
+                <div style={{ fontWeight: 700 }}>{feed.ticker}</div>
                 <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>
-                  {feed.name}
+                  {feed.symbol} · {feed.name}
                 </div>
               </button>
             );
@@ -176,7 +178,7 @@ export function StepPriceFeed({ formData, updateField }: StepPriceFeedProps) {
         <input
           checked={formData.useStrikePrice}
           id="useStrikePrice"
-          style={{ marginTop: 3, accentColor: colors.neonCyan }}
+          style={{ marginTop: 3, accentColor: primaryColor }}
           type="checkbox"
           onChange={(e) => updateField("useStrikePrice", e.target.checked)}
         />

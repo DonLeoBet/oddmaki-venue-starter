@@ -14,6 +14,7 @@ import {
 } from "@oddmaki-protocol/sdk";
 
 import { ACTIVE_CHAIN } from "./chain";
+import { createResilientTransport } from "@/lib/rpc/baseClient";
 
 /**
  * Hook to get an initialized OddMaki client
@@ -31,6 +32,7 @@ export function useOddMakiClient() {
 
     return createOddMakiClient({
       chain: ACTIVE_CHAIN,
+      transport: createResilientTransport({ bot: false }),
       walletClient: walletClient as any, // Cast to any to avoid version mismatches
       subgraphEndpoint,
     });

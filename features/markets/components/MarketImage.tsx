@@ -9,12 +9,15 @@ interface MarketImageProps {
   metadataURI: string;
   name: string;
   size?: "sm" | "md" | "lg";
+  /** Show initials avatar when no IPFS image is set. */
+  showFallback?: boolean;
 }
 
 export function MarketImage({
   metadataURI,
   name,
   size = "sm",
+  showFallback = false,
 }: MarketImageProps) {
   const { data: metadata } = useMetadata<MarketMetadata>(metadataURI || null);
 
@@ -22,7 +25,7 @@ export function MarketImage({
     ? resolveIPFSUri(metadata.image_url, process.env.NEXT_PUBLIC_IPFS_GATEWAY)
     : undefined;
 
-  if (!imageUrl) return null;
+  if (!imageUrl && !showFallback) return null;
 
   return (
     <Avatar

@@ -17,11 +17,14 @@ import { queryClient } from "../../utils/query-client";
 
 import { rainbowkitWagmiConfig } from "./rainbowkit-config";
 
+import { ACTIVE_CHAIN } from "@/lib/oddmaki/chain";
+
 export function RainbowKitAuthProvider({ children }: AuthProviderProps) {
   return (
     <WagmiProvider config={rainbowkitWagmiConfig}>
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider
+          initialChain={ACTIVE_CHAIN}
           theme={{
             lightMode: lightTheme(),
             darkMode: darkTheme(),

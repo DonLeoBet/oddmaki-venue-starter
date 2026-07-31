@@ -1,39 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import {
-  logFetchMatchesError,
-  runFetchMatchesJob,
-} from "@/lib/cron/fetch-matches-job";
+  logFetchOutrightsError,
+  runFetchOutrightsJob,
+} from "@/lib/cron/fetch-outrights-job";
+import { requireCronAuth } from "@/lib/server/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-function authorizeCron(request: NextRequest): NextResponse | null {
-  const secret = process.env.CRON_SECRET;
-
-  if (!secret) return null;
-
-  const auth = request.headers.get("authorization");
-
-  if (auth !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  return null;
-}
-
+/**
+ * Outright sync cron — requires Authorization: Bearer ${CRON_SECRET}.
+ */
 async function handleRequest(request: NextRequest): Promise<NextResponse> {
-  const denied = authorizeCron(request);
+  const authError = requireCronAuth(request);
 
-  if (denied) return denied;
+  if (authError) return authError;
 
   try {
-    const summary = await runFetchMatchesJob();
+    const summary = await runFetchOutrightsJob();
 
     return NextResponse.json({ ok: true, ...summary }, { status: 200 });
   } catch (error) {
-    logFetchMatchesError("Unhandled cron failure", error);
+    logFetchOutrightsError("Unhandled outright cron failure", error);
     const message = error instanceof Error ? error.message : "Unknown error";
 
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

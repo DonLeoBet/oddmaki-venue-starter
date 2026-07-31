@@ -7,7 +7,12 @@
 
 import type { AuthProviderType } from "./types";
 
-const raw = process.env.NEXT_PUBLIC_AUTH_PROVIDER ?? "rainbowkit";
+const explicitProvider = process.env.NEXT_PUBLIC_AUTH_PROVIDER?.trim();
+
+/** Prefer Privy when an app ID is configured (common setup mistake: ID set but provider left default). */
+const raw =
+  explicitProvider ??
+  (process.env.NEXT_PUBLIC_PRIVY_APP_ID?.trim() ? "privy" : "rainbowkit");
 
 function validateProvider(value: string): AuthProviderType {
   if (value === "privy" || value === "rainbowkit") return value;

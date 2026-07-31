@@ -358,5 +358,5 @@ export const DEFAULT_PRICE_FORM: PriceMarketFormData = {
   resolutionWindow: 0,
   title: "",
   description: "",
-  tags: ["price-market"],
+  tags: ["crypto", "price-market"],
 };
