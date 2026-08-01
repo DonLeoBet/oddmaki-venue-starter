@@ -14,7 +14,7 @@ import {
   sortUnifiedFeedItems,
   filterFeedByMinKickoff,
   filterFeedHideLegacyOutrights,
-  filterFeedHideLegacyMatchGroups,
+  filterFeedHideRetiredMatchMarkets,
 } from "../utils/kickoffSort";
 
 import { MarketCard } from "./MarketCard";
@@ -36,6 +36,7 @@ import {
   isNewTaxonomyMatchGroup,
   isOutrightGroup,
 } from "@/lib/markets/marketFilters";
+import { groupMatchesCountryTag } from "@/lib/football/outright-sidebar";
 
 function isOutrightFeedItem(item: UnifiedFeedItem): boolean {
   return item.type === "group" && isOutrightGroup(item.data.tags);
@@ -70,6 +71,7 @@ export function MarketGrid() {
   const searchParams = useSearchParams();
   const selectedCategory = searchParams.get("category");
   const leagueFilter = searchParams.get("league");
+  const countryFilter = searchParams.get("country");
   const sortParam = searchParams.get("sort");
   const searchQuery = searchParams.get("q")?.trim() ?? "";
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("Active");
@@ -137,7 +139,7 @@ export function MarketGrid() {
 
     result = filterFeedByMinKickoff(result);
     result = filterFeedHideLegacyOutrights(result);
-    result = filterFeedHideLegacyMatchGroups(result);
+    result = filterFeedHideRetiredMatchMarkets(result);
 
     return sortUnifiedFeedItems(result, sortBy);
   }, [items, selectedCategory, statusFilter, sortBy]);
@@ -160,13 +162,23 @@ export function MarketGrid() {
 
       if (leagueFilter && LEAGUE_BY_SLUG[leagueFilter]) {
         items = filterOutrightsForLeague(leagueFilter);
+      } else if (countryFilter) {
+        items = outrightFeedItems.filter(
+          (item) =>
+            item.type === "group" &&
+            groupMatchesCountryTag(item.data.tags ?? [], countryFilter),
+        );
       }
 
       return {
         mainGridItems: items,
         outrightSectionItems: [] as UnifiedFeedItem[],
         outrightSectionTitle: "Long-term odds",
-        outrightViewAllHref: "/?category=outrights",
+        outrightViewAllHref: countryFilter
+          ? `/?category=outrights&country=${countryFilter}`
+          : leagueFilter
+            ? `/?category=outrights&league=${leagueFilter}`
+            : "/?category=outrights",
       };
     }
 
@@ -195,7 +207,7 @@ export function MarketGrid() {
       outrightSectionTitle: "Long-term odds",
       outrightViewAllHref: "/?category=outrights",
     };
-  }, [filteredItems, selectedCategory, leagueFilter, outrightGroups]);
+  }, [filteredItems, selectedCategory, leagueFilter, countryFilter, outrightGroups]);
 
   const seriesIds = useMemo(
     () =>

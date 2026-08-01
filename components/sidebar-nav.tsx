@@ -2,10 +2,12 @@
 
 import { usePathname, useSearchParams } from "next/navigation";
 
+import { OutrightCountriesNav } from "@/components/sidebar/OutrightCountriesNav";
 import {
   SidebarAccordion,
   SidebarLink,
   SidebarSection,
+  SidebarSubheading,
 } from "@/components/sidebar/SidebarAccordion";
 import { useBrand } from "@/features/brand";
 import {
@@ -30,7 +32,6 @@ function LeagueNavItem({
   marketLinks,
   pathname,
   category,
-  leagueFilter,
   forceOpen,
   onNavigate,
 }: {
@@ -40,7 +41,6 @@ function LeagueNavItem({
   marketLinks: Array<{ href: string; label: string }>;
   pathname: string;
   category: string | null;
-  leagueFilter: string | null;
   forceOpen: boolean;
   onNavigate?: () => void;
 }) {
@@ -48,42 +48,32 @@ function LeagueNavItem({
   const leagueRouteActive = marketLinks.some((link) =>
     isPathActive(pathname, link.href),
   );
-  const outrightHref = `/?category=outrights&league=${leagueSlug}`;
-  const outrightActive =
-    pathname === "/" &&
-    category === "outrights" &&
-    leagueFilter === leagueSlug;
 
   return (
     <SidebarAccordion
-      forceOpen={forceOpen || leagueFeedActive || leagueRouteActive || outrightActive}
+      forceOpen={forceOpen || leagueFeedActive || leagueRouteActive}
       id={`league-${leagueSlug}`}
       label={leagueLabel}
-      level={1}
+      level={2}
     >
       <SidebarLink
         active={leagueFeedActive}
         href={leagueHref}
         label="All matches"
         onNavigate={onNavigate}
+        sub
       />
       {marketLinks.map((link) => (
         <SidebarLink
           key={link.href}
           active={isPathActive(pathname, link.href)}
+          depth={2}
           href={link.href}
           label={link.label}
-          sub
           onNavigate={onNavigate}
+          sub
         />
       ))}
-      <SidebarLink
-        active={outrightActive}
-        href={outrightHref}
-        label="Long-term odds"
-        sub
-        onNavigate={onNavigate}
-      />
     </SidebarAccordion>
   );
 }
@@ -93,7 +83,6 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void } = {}) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const category = searchParams.get("category");
-  const leagueFilter = searchParams.get("league");
   const { brandId, locale } = useBrand();
 
   const leagues = getSidebarLeagueLinks(brandId as BrandId, locale);
@@ -103,10 +92,8 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void } = {}) {
   );
 
   const isHomeActive = pathname === "/" && !category;
-  const isOutrightsActive = pathname === "/" && category === "outrights";
-
-  const sportsOpen =
-    pathname === "/" && category != null && category !== "outrights";
+  const matchCategoryActive =
+    category != null && category !== "outrights";
 
   return (
     <nav aria-label="Site navigation" className="flex flex-col">
@@ -119,14 +106,19 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void } = {}) {
         />
       </SidebarSection>
 
-      <SidebarSection title="Top leagues">
+      <SidebarSection title="Football">
         <SidebarAccordion
           defaultOpen
-          forceOpen={sportsOpen || leagues.some((l) => isPathActive(pathname, l.href))}
+          forceOpen={
+            matchCategoryActive ||
+            category === "outrights" ||
+            leagues.some((l) => isPathActive(pathname, l.href))
+          }
           id="sports-football"
           label="Football"
-          level={1}
+          level={0}
         >
+          <SidebarSubheading>Top leagues</SidebarSubheading>
           {leagues.map((league) => {
             const marketLinks = sidebarMarketTypes.map((marketType) => ({
               href: buildCategoryPath(
@@ -142,7 +134,6 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void } = {}) {
                 key={league.slug}
                 category={category}
                 forceOpen={category === league.slug}
-                leagueFilter={leagueFilter}
                 leagueHref={league.href}
                 leagueLabel={league.label}
                 leagueSlug={league.slug}
@@ -152,16 +143,9 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void } = {}) {
               />
             );
           })}
-        </SidebarAccordion>
-      </SidebarSection>
 
-      <SidebarSection title="Markets">
-        <SidebarLink
-          active={isOutrightsActive && !leagueFilter}
-          href="/?category=outrights"
-          label="Long-term odds"
-          onNavigate={onNavigate}
-        />
+          <OutrightCountriesNav onNavigate={onNavigate} />
+        </SidebarAccordion>
       </SidebarSection>
 
       {contentLinks.length > 0 && (

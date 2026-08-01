@@ -6,11 +6,11 @@ import {
 } from "@/lib/football/constants";
 import { isKickoffOnOrAfterMinDate } from "@/lib/football/fixture-window";
 import {
-  isLegacyMatchGroup,
   isOutrightGroup,
   buildMaxOutrightRevisionMap,
   isSupersededOutrightInBatch,
 } from "@/lib/markets/marketFilters";
+import { isPublicMatchGroup } from "@/config/matchMarkets.config";
 
 const MATCH_RESULT_DATE = /Match Result \((.+)\)\s*$/;
 
@@ -135,13 +135,26 @@ export function filterFeedHideLegacyOutrights(
   });
 }
 
-/** Hide pre-taxonomy fixture groups from match market feeds. */
-export function filterFeedHideLegacyMatchGroups(
+/** Hide retired standalone markets and pre-revision fixture groups. */
+export function filterFeedHideRetiredMatchMarkets(
   items: UnifiedFeedItem[],
 ): UnifiedFeedItem[] {
   return items.filter((item) => {
-    if (item.type !== "group") return true;
+    if (item.type === "standalone") return false;
 
-    return !isLegacyMatchGroup(item.data.tags, item.data.outcomes);
+    if (item.type === "group") {
+      const tags = item.data.tags;
+
+      if (isOutrightGroup(tags)) return true;
+
+      if (
+        isFixtureMarket(tags) ||
+        tags?.some((tag) => tag.startsWith("match-markets"))
+      ) {
+        return isPublicMatchGroup(tags);
+      }
+    }
+
+    return true;
   });
 }

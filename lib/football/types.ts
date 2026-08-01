@@ -46,7 +46,6 @@ export type MatchMarketCategory =
   | "ou15"
   | "ou25"
   | "ou35"
-  | "double_chance"
   | "dnb";
 
 export interface PreparedMatchOutcome {

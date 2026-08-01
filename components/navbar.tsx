@@ -1,13 +1,14 @@
 import NextLink from "next/link";
+import { Suspense } from "react";
 import {
   Navbar as HeroUINavbar,
   NavbarContent,
   NavbarBrand,
   NavbarItem,
 } from "@heroui/navbar";
-import { Button } from "@heroui/button";
 
 import { BrandLogo } from "@/components/brand";
+import { MobileLeagueDrawer } from "@/components/mobile-league-drawer";
 import { ConnectButton } from "@/features/auth";
 import { WalletPanel, TopUp } from "@/features/wallet/components";
 import { CreateMarketButton } from "@/features/market-creation";
@@ -23,12 +24,17 @@ export const Navbar = () => {
       maxWidth="full"
       position="sticky"
     >
-      <NavbarContent justify="start">
-        <NavbarBrand className="flex-shrink-0">
+      <NavbarContent justify="start" className="min-w-0 gap-2">
+        <NavbarBrand className="flex-shrink-0 min-w-0">
           <NextLink className="flex items-center gap-2" href="/">
             <BrandLogo priority />
           </NextLink>
         </NavbarBrand>
+        <NavbarItem className="lg:hidden shrink-0">
+          <Suspense>
+            <MobileLeagueDrawer />
+          </Suspense>
+        </NavbarItem>
       </NavbarContent>
 
       <NavbarContent
@@ -39,17 +45,6 @@ export const Navbar = () => {
       </NavbarContent>
 
       <NavbarContent className="gap-1 sm:gap-2 min-w-0 shrink" justify="end">
-        <NavbarItem className="hidden sm:flex">
-          <Button
-            as={NextLink}
-            className="font-semibold px-2 sm:px-3"
-            href="/vault"
-            size="sm"
-            variant="flat"
-          >
-            Vault
-          </Button>
-        </NavbarItem>
         <NavbarItem className="hidden md:flex">
           <CreateMarketButton />
         </NavbarItem>

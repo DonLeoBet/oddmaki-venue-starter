@@ -3,6 +3,7 @@ import {
   leagueSlugTag,
   parseLeagueSlugFromTags,
 } from "@/config/leagues";
+import { isPublicMatchGroup } from "@/config/matchMarkets.config";
 import {
   FIXTURE_TAG_PREFIX,
   OUTRIGHT_TAG_PREFIX,
@@ -104,7 +105,11 @@ export function isFixtureGroup(tags: string[] | undefined): boolean {
 }
 
 export function hasMatchMarketsTag(tags: string[] | undefined): boolean {
-  return tags?.includes("match-markets") ?? false;
+  return (
+    tags?.some(
+      (tag) => tag === "match-markets" || tag.startsWith("match-markets-"),
+    ) ?? false
+  );
 }
 
 export function isOutrightGroup(tags: string[] | undefined): boolean {
@@ -129,12 +134,13 @@ export function groupHasCanonicalMarkets(
   );
 }
 
-/** Match fixture group created with the new marketType taxonomy. */
+/** Match fixture group eligible for public feeds (current import revision). */
 export function isNewTaxonomyMatchGroup(
   tags: string[] | undefined,
   outcomes: SubMarketLike[],
 ): boolean {
   if (isOutrightGroup(tags)) return false;
+  if (!isPublicMatchGroup(tags)) return false;
 
   return hasMatchMarketsTag(tags) || groupHasCanonicalMarkets(outcomes);
 }

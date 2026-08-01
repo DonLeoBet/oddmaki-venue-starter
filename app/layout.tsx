@@ -41,11 +41,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html suppressHydrationWarning lang="en">
+    <html suppressHydrationWarning lang="en" className="overflow-x-hidden">
       <head />
       <body
         className={clsx(
-          "min-h-screen text-foreground bg-background font-sans antialiased",
+          "min-h-screen overflow-x-hidden max-w-[100vw] text-foreground bg-background font-sans antialiased",
           fontSans.variable,
         )}
       >

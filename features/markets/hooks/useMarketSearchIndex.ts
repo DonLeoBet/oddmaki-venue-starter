@@ -15,10 +15,10 @@ import {
 } from "../utils/matchMarketSearch";
 import {
   buildMaxOutrightRevisionMap,
-  isLegacyMatchGroup,
   isOutrightGroup,
   isSupersededOutrightInBatch,
 } from "@/lib/markets/marketFilters";
+import { isPublicMatchGroup } from "@/config/matchMarkets.config";
 
 const PAGE_SIZE = 100;
 const MAX_GROUPS = 1000;
@@ -92,10 +92,7 @@ async function fetchMarketSearchIndex(
       continue;
     }
 
-    if (
-      !isOutrightGroup(tags) &&
-      isLegacyMatchGroup(tags, outcomes)
-    ) {
+    if (!isOutrightGroup(tags) && !isPublicMatchGroup(tags)) {
       continue;
     }
 

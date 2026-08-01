@@ -1,8 +1,8 @@
-import type { ApiFootballFixtureRow, PreparedMatchMarketGroup } from "./types";
+import type { ApiFootballFixtureRow, PreparedMatchMarketGroup, MatchMarketCategory } from "./types";
 
 import { MAX_TAGS } from "@/config/tags.config";
+import { getMatchMarketsTag } from "@/config/matchMarkets.config";
 import { LEAGUE_BY_ID, leagueSlugTag } from "@/config/leagues";
-import type { MarketTypeId } from "@/config/marketTypes";
 import { canonicalSubMarketName } from "@/config/marketTypes";
 
 import { FIXTURE_TAG_PREFIX, fixtureTag, kickoffTag } from "./constants";
@@ -28,7 +28,7 @@ function seasonYearFromIso(iso: string): number {
 interface OutcomeSpec {
   /** Language-agnostic canonical key, e.g. `btts:yes`. */
   name: string;
-  category: MarketTypeId;
+  category: MatchMarketCategory;
   outcomeKey: string;
   question: string;
   description: string;
@@ -43,7 +43,7 @@ function buildOutcomes(
   const specs: OutcomeSpec[] = [];
 
   const addBinary = (
-    category: MarketTypeId,
+    category: MatchMarketCategory,
     outcomeKey: string,
     question: string,
     description: string,
@@ -109,25 +109,6 @@ function buildOutcomes(
   }
 
   addBinary(
-    "double_chance",
-    "1x",
-    `Will ${home} win or draw in ${home} vs ${away}?`,
-    `Double chance 1X — home win or draw. ${sharedContext} Ref: ${ref}-DC-1X.`,
-  );
-  addBinary(
-    "double_chance",
-    "12",
-    `Will ${home} vs ${away} avoid a draw?`,
-    `Double chance 12 — home or away win. ${sharedContext} Ref: ${ref}-DC-12.`,
-  );
-  addBinary(
-    "double_chance",
-    "x2",
-    `Will ${away} win or draw in ${home} vs ${away}?`,
-    `Double chance X2 — draw or away win. ${sharedContext} Ref: ${ref}-DC-X2.`,
-  );
-
-  addBinary(
     "dnb",
     "home",
     `Draw No Bet: will ${home} win ${home} vs ${away}?`,
@@ -178,7 +159,7 @@ export function mapFixtureToMarketGroup(
 
   const description =
     `Official match markets for ${home} vs ${away}. Kickoff: ${kickoffLabel}. ` +
-    `League: ${league.name}. Standard lines: 1X2, BTTS, O/U 1.5/2.5/3.5, Double Chance, DNB. ` +
+    `League: ${league.name}. Standard lines: 1X2, BTTS, O/U 1.5/2.5/3.5, DNB. ` +
     `Market resolves based on official tournament statistics. Ref: ${ref}.${metaBlock}`;
 
   const tags = [
@@ -186,7 +167,7 @@ export function mapFixtureToMarketGroup(
     kickoffTag(fixture.timestamp),
     leagueSlugTag(leagueSlug),
     "sports",
-    "match-markets",
+    getMatchMarketsTag(),
   ].slice(0, MAX_TAGS);
 
   const outcomes = buildOutcomes(home, away, sharedContext, ref);
