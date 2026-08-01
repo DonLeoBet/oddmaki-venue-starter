@@ -10,51 +10,7 @@ import { useOddMakiClient } from "@/lib/oddmaki/hooks";
 import { getVenueId } from "@/config/venue.config";
 import { queryKeys } from "@/lib/oddmaki/queryKeys";
 import { fetchAllMatchGroupsFromUnifiedFeed } from "@/lib/markets/fetchMatchGroups";
-import { isKickoffOnOrAfterMinDate } from "@/lib/football/fixture-window";
-import {
-  groupMatchesLeagueSlug,
-  isNewTaxonomyMatchGroup,
-  isOutrightGroup,
-  isRetiredBeatOnlyMatchGroup,
-} from "@/lib/markets/marketFilters";
-import { isPublicMatchGroup } from "@/config/matchMarkets.config";
-
-function kickoffFromTags(tags: string[] | undefined): number | null {
-  const tag = tags?.find((entry) => entry.startsWith("kickoff-"));
-
-  if (!tag) return null;
-
-  const unix = Number(tag.slice("kickoff-".length));
-
-  return Number.isFinite(unix) && unix > 0 ? unix : null;
-}
-
-function filterLeagueGroups(
-  groups: FormattedMarketGroup[],
-  leagueSlug: string,
-  statusFilter: StatusFilter,
-): FormattedMarketGroup[] {
-  return groups
-    .filter((group) => {
-      const tags = group.tags ?? [];
-
-      if (isOutrightGroup(tags)) return false;
-      if (!groupMatchesLeagueSlug(tags, leagueSlug)) return false;
-      if (!isNewTaxonomyMatchGroup(tags, group.outcomes)) return false;
-      if (!isPublicMatchGroup(tags)) return false;
-      if (isRetiredBeatOnlyMatchGroup(tags, group.outcomes ?? [])) return false;
-      if (group.status !== statusFilter) return false;
-
-      const kickoff = kickoffFromTags(tags);
-
-      return kickoff == null || isKickoffOnOrAfterMinDate(kickoff);
-    })
-    .sort(
-      (a, b) =>
-        (kickoffFromTags(a.tags) ?? Number.MAX_SAFE_INTEGER) -
-        (kickoffFromTags(b.tags) ?? Number.MAX_SAFE_INTEGER),
-    );
-}
+import { filterMatchGroupsForFeed } from "@/lib/markets/filterMatchGroups";
 
 /** Full paginated fetch for a single league — avoids unified-feed pagination gaps. */
 export function useLeagueMatchGroups(
@@ -64,7 +20,7 @@ export function useLeagueMatchGroups(
   const client = useOddMakiClient();
   const venueId = getVenueId();
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, isFetching } = useQuery({
     queryKey: queryKeys.leagueMatchGroups.list(
       venueId?.toString(),
       leagueSlug ?? undefined,
@@ -77,11 +33,18 @@ export function useLeagueMatchGroups(
     refetchInterval: 60_000,
   });
 
-  const groups = useMemo(() => {
-    if (!data || !leagueSlug) return [] as FormattedMarketGroup[];
+  const groups = useMemo((): FormattedMarketGroup[] => {
+    if (!data || !leagueSlug) return [];
 
-    return filterLeagueGroups(data, leagueSlug, statusFilter);
+    return filterMatchGroupsForFeed(data, {
+      statusFilter,
+      leagueSlug,
+    });
   }, [data, leagueSlug, statusFilter]);
 
-  return { groups, isLoading, error };
+  return {
+    groups,
+    isLoading: isLoading || isFetching,
+    error,
+  };
 }

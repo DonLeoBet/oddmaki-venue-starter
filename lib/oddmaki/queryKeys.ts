@@ -152,6 +152,12 @@ export const queryKeys = {
       ["leagueMatchGroups", venueId, leagueSlug, status] as const,
   },
 
+  homepageMatchGroups: {
+    all: ["homepageMatchGroups"] as const,
+    list: (venueId?: string, status?: string) =>
+      ["homepageMatchGroups", venueId, status] as const,
+  },
+
   accessControl: {
     all: ["accessControl"] as const,
     canTrade: (marketId: string, user: string) =>

@@ -11,6 +11,13 @@ export const SUGGESTED_TAGS = [
   "German Football",
   "French Football",
   "Turkish Football",
+  "Saudi Football",
+  "Belgian Football",
+  "Scottish Football",
+  "Greek Football",
+  "Austrian Football",
+  "Swiss Football",
+  "Danish Football",
   "Argentine Football",
   "Brazilian Football",
   "Colombian Football",
@@ -66,6 +73,11 @@ export const CATEGORIES: CategoryConfig[] = [
     matchTags: ["Premier League"],
   },
   {
+    id: "championship",
+    label: "Championship",
+    matchTags: ["Championship"],
+  },
+  {
     id: "champions-league",
     label: "Champions League",
     matchTags: ["Champions League"],
@@ -96,9 +108,49 @@ export const CATEGORIES: CategoryConfig[] = [
     matchTags: ["Ligue 1"],
   },
   {
+    id: "primeira-liga",
+    label: "Primeira Liga",
+    matchTags: ["Primeira Liga"],
+  },
+  {
     id: "super-lig",
     label: "Süper Lig",
     matchTags: ["Süper Lig"],
+  },
+  {
+    id: "pro-league-sa",
+    label: "Saudi Pro League",
+    matchTags: ["Pro League SA"],
+  },
+  {
+    id: "belgian-pro-league",
+    label: "Belgian Pro League",
+    matchTags: ["Pro League"],
+  },
+  {
+    id: "scottish-premiership",
+    label: "Scottish Premiership",
+    matchTags: ["Scottish Premiership"],
+  },
+  {
+    id: "super-league-gr",
+    label: "Greek Super League",
+    matchTags: ["Super League GR"],
+  },
+  {
+    id: "bundesliga-at",
+    label: "Austrian Bundesliga",
+    matchTags: ["Bundesliga AT"],
+  },
+  {
+    id: "super-league-ch",
+    label: "Swiss Super League",
+    matchTags: ["Super League CH"],
+  },
+  {
+    id: "superliga",
+    label: "Danish Superliga",
+    matchTags: ["Superliga"],
   },
   {
     id: "liga-profesional",

@@ -19,7 +19,10 @@ type UnifiedFeedPage = {
   hasMore: boolean;
 };
 
-export function useUnifiedFeed(sortBy: "created" | "volume" = "created") {
+export function useUnifiedFeed(
+  sortBy: "created" | "volume" = "created",
+  enabled = true,
+) {
   const client = useOddMakiClient();
   const venueId = getVenueId();
 
@@ -65,7 +68,7 @@ export function useUnifiedFeed(sortBy: "created" | "volume" = "created") {
     },
     getNextPageParam: (lastPage, allPages) =>
       lastPage.hasMore ? allPages.length * UNIFIED_FEED_PAGE_SIZE : undefined,
-    enabled: !!client && venueId !== undefined,
+    enabled: enabled && !!client && venueId !== undefined,
     staleTime: 30_000,
     refetchInterval: 60_000,
   });

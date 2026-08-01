@@ -27,7 +27,7 @@ export const BRAND_MARKETS: Record<BrandId, BrandMarketsConfig> = {
       "ou35",
     ],
     categoryNavMarketTypes: ["1x2", "btts", "ou25"],
-    overviewCardMarketTypes: ["1x2", "btts", "ou25"],
+    overviewCardMarketTypes: ["1x2"],
   },
   topclass: {
     visibleLeagues: [...LIVE_LEAGUE_SLUGS],
@@ -39,7 +39,7 @@ export const BRAND_MARKETS: Record<BrandId, BrandMarketsConfig> = {
       "ou35",
     ],
     categoryNavMarketTypes: ["1x2", "btts", "ou25"],
-    overviewCardMarketTypes: ["1x2", "btts", "ou25"],
+    overviewCardMarketTypes: ["1x2"],
   },
   glazenbol: {
     visibleLeagues: ["eredivisie", "keuken-kampioen"],
