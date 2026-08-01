@@ -65,7 +65,7 @@ export function MarketGroupDetailHeader({
             <ArrowBackIcon size={20} />
           </Button>
           <div className="flex flex-col gap-3 min-w-0">
-            {teams ? (
+            {teams ?
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                 <MatchTeamLogos
                   away={teams.away}
@@ -76,9 +76,7 @@ export function MarketGroupDetailHeader({
                   {teams.home.name} vs {teams.away.name}
                 </h1>
               </div>
-            ) : (
-              <h1 className="text-2xl font-bold">{title}</h1>
-            )}
+            : <h1 className="text-2xl font-bold">{title}</h1>}
             {(leagueName || kickoff) && (
               <div className="flex flex-wrap items-center gap-2">
                 {leagueName && (

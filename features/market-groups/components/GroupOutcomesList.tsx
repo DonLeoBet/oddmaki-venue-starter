@@ -20,10 +20,12 @@ import { getCommonYesNo } from "@/config/locales";
 import type { FixtureTeams } from "@/lib/markets/marketDisplay";
 import type { MarketTypeId } from "@/config/marketTypes";
 import { TeamLogo } from "@/components/football/TeamLogo";
+import { DrawOutcomeIcon } from "@/components/football/DrawOutcomeIcon";
 import {
   BinaryMarketTypeSection,
   isBinaryPairMarketType,
 } from "./overview/BinaryMarketTypeSection";
+import { OneXTwoMarketSection } from "./overview/OneXTwoMarketSection";
 
 const PRIMARY_TAB_TYPES = new Set<MarketTypeId>(["1x2", "btts", "ou25"]);
 
@@ -46,6 +48,7 @@ function MarketRow({
   yesLabel,
   noLabel,
   teamLogo,
+  isDraw,
 }: {
   market: GroupMarketDetail;
   isSelected: boolean;
@@ -55,6 +58,7 @@ function MarketRow({
   yesLabel: string;
   noLabel: string;
   teamLogo?: string | null;
+  isDraw?: boolean;
 }) {
   const pct = Math.round(market.yesPrice);
 
@@ -71,14 +75,16 @@ function MarketRow({
         type="button"
         onClick={onSelect}
       >
-        {teamLogo ?
+        {isDraw ?
+          <DrawOutcomeIcon className="shrink-0" size="row" />
+        : teamLogo ?
           <TeamLogo className="shrink-0" name={displayName} size="row" src={teamLogo} />
         : null}
         <div className="flex flex-col gap-0.5 min-w-0">
           <span
-            className={`text-sm truncate ${
-              isSelected ? "font-semibold text-cyan-300" : "font-medium"
-            }`}
+            className={`text-sm min-w-0 ${
+              displayName.includes("?") ? "whitespace-normal leading-snug" : "truncate"
+            } ${isSelected ? "font-semibold text-cyan-300" : "font-medium"}`}
           >
             {displayName}
           </span>
@@ -136,6 +142,17 @@ function SectionBlock({
   noLabel: string;
   resolveOutcomeLogo?: (outcomeName: string) => string | null;
 }) {
+  if (section.id === "1x2" && teams) {
+    return (
+      <OneXTwoMarketSection
+        markets={section.markets}
+        selectedMarketId={selectedMarketId}
+        teams={teams}
+        onSelectMarket={onSelectMarket}
+      />
+    );
+  }
+
   if (isBinaryPairMarketType(section.id)) {
     return (
       <BinaryMarketTypeSection
@@ -157,6 +174,7 @@ function SectionBlock({
           <MarketRow
             key={market.marketId}
             displayName={displayName}
+            isDraw={market.marketType === "1x2" && market.outcomeKey === "draw"}
             isSelected={market.marketId === selectedMarketId}
             market={market}
             noLabel={noLabel}

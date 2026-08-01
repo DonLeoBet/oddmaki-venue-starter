@@ -10,6 +10,9 @@ export const SUGGESTED_TAGS = [
   "Italian Football",
   "German Football",
   "French Football",
+  "Turkish Football",
+  "Argentine Football",
+  "Brazilian Football",
   "Champions League",
   "Europa League",
   "La Liga",
@@ -88,6 +91,21 @@ export const CATEGORIES: CategoryConfig[] = [
     id: "ligue-1",
     label: "Ligue 1",
     matchTags: ["Ligue 1"],
+  },
+  {
+    id: "super-lig",
+    label: "Süper Lig",
+    matchTags: ["Süper Lig"],
+  },
+  {
+    id: "liga-profesional",
+    label: "Liga Profesional",
+    matchTags: ["Liga Profesional"],
+  },
+  {
+    id: "brasileirao",
+    label: "Brasileirão",
+    matchTags: ["Brasileirão"],
   },
   {
     id: "crypto",

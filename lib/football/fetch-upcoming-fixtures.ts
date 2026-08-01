@@ -9,11 +9,12 @@ import {
   getFixtureMinKickoffDateYmd,
   getFixtureMinKickoffUnix,
 } from "./fixture-window";
+import { filterFixturesByMaxRound } from "./fixture-rounds";
 
 const UPCOMING_STATUSES = new Set(["NS", "TBD"]);
 
 /** Primary `next` window when querying api-sports.io */
-const DEFAULT_NEXT_COUNT = 5;
+const DEFAULT_NEXT_COUNT = 10;
 
 /** Fallback window: today → +N days (covers pre-season kickoffs in August) */
 const DEFAULT_DATE_FALLBACK_DAYS = 30;
@@ -157,4 +158,47 @@ export async function fetchUpcomingFixtures(
   merged.sort((a, b) => a.fixture.timestamp - b.fixture.timestamp);
 
   return merged;
+}
+
+export interface FetchLeagueFixturesByMaxRoundOptions {
+  leagueId: number;
+  season?: number;
+  maxRound: number;
+  /** Inclusive YYYY-MM-DD (defaults to FIXTURE_MIN_KICKOFF_DATE) */
+  from?: string;
+  /** Inclusive YYYY-MM-DD (defaults to +90 days from `from`) */
+  to?: string;
+}
+
+/**
+ * Fetch upcoming fixtures for one league limited to regular-season rounds 1…maxRound.
+ */
+export async function fetchLeagueFixturesByMaxRound(
+  options: FetchLeagueFixturesByMaxRoundOptions,
+): Promise<ApiFootballFixtureRow[]> {
+  const season = options.season ?? currentSeasonYear();
+  const from = options.from ?? getFixtureMinKickoffDateYmd();
+  const toDate = new Date(`${from}T00:00:00.000Z`);
+  toDate.setUTCDate(toDate.getUTCDate() + 90);
+  const to = options.to ?? formatDateYmd(toDate);
+
+  const raw = await fetchFixturesByLeagueDateRange({
+    leagueId: options.leagueId,
+    season,
+    from,
+    to,
+  });
+
+  const filtered = filterFixturesByMaxRound(
+    filterMinKickoff(filterUpcoming(raw)),
+    options.maxRound,
+  );
+
+  filtered.sort((a, b) => a.fixture.timestamp - b.fixture.timestamp);
+
+  console.info(
+    `[fetch-upcoming-fixtures] league ${options.leagueId} season ${season} rounds 1-${options.maxRound}: ${filtered.length} fixtures (${from}→${to})`,
+  );
+
+  return filtered;
 }

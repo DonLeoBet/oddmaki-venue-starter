@@ -4,11 +4,14 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Popover, PopoverTrigger, PopoverContent } from "@heroui/popover";
 import { Divider } from "@heroui/divider";
 import { Switch } from "@heroui/switch";
+import { Input } from "@heroui/input";
+import { Button } from "@heroui/button";
 import { useTheme } from "next-themes";
 import NextLink from "next/link";
 
 import { AddressAvatar } from "@/lib/identity/avatar";
-import { generatePseudonym, shortenAddress } from "@/lib/identity/pseudonym";
+import { shortenAddress } from "@/lib/identity/pseudonym";
+import { useDisplayName } from "@/features/identity/hooks/useDisplayName";
 import {
   SunFilledIcon,
   MoonFilledIcon,
@@ -33,12 +36,19 @@ export function UserSettings({
 
   const containerRef = useRef<HTMLDivElement>(null);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+
+  const { displayName, customName, setDisplayName } = useDisplayName(address);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const pseudonym = generatePseudonym(address);
+  useEffect(() => {
+    if (editingName) setNameDraft(customName ?? displayName);
+  }, [editingName, customName, displayName]);
+
   const short = shortenAddress(address);
   const isDark = mounted ? theme === "dark" : true;
 
@@ -96,7 +106,7 @@ export function UserSettings({
               <AddressAvatar address={address} size={40} />
               <div className="flex flex-col min-w-0">
                 <span className="text-sm font-semibold truncate">
-                  {pseudonym}
+                  {displayName}
                 </span>
                 <button
                   className="flex items-center gap-1 text-xs text-default-500 hover:text-default-700 transition-colors cursor-pointer"
@@ -106,6 +116,47 @@ export function UserSettings({
                   <span className="text-[10px]">{copied ? "Copied!" : ""}</span>
                 </button>
               </div>
+            </div>
+
+            <Divider />
+
+            <div className="px-4 py-3">
+              {editingName ?
+                <div className="flex flex-col gap-2">
+                  <Input
+                    maxLength={32}
+                    size="sm"
+                    value={nameDraft}
+                    onValueChange={setNameDraft}
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="flat"
+                      onPress={() => setEditingName(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      color="primary"
+                      size="sm"
+                      onPress={() => {
+                        setDisplayName(nameDraft);
+                        setEditingName(false);
+                      }}
+                    >
+                      Save name
+                    </Button>
+                  </div>
+                </div>
+              : <button
+                  className="text-sm text-left w-full hover:text-primary transition-colors"
+                  type="button"
+                  onClick={() => setEditingName(true)}
+                >
+                  Change display name
+                </button>
+              }
             </div>
 
             <Divider />

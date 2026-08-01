@@ -1,12 +1,11 @@
 "use client";
 
-import type { CategoryMarketRow } from "../utils/categoryMarkets";
+import type { MarketTypeId } from "@/config/marketTypes";
 import { filterGroupForCategory } from "../utils/categoryMarkets";
 
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 
-import type { MarketTypeId } from "@/config/marketTypes";
 import { useOddMakiClient } from "@/lib/oddmaki/hooks";
 import { getVenueId } from "@/config/venue.config";
 import { queryKeys } from "@/lib/oddmaki/queryKeys";
@@ -33,17 +32,26 @@ export function useCategoryMarkets(
     refetchInterval: 60_000,
   });
 
-  const rows = useMemo(() => {
-    if (!data) return [] as CategoryMarketRow[];
+  const groups = useMemo(() => {
+    if (!data) return [] as FormattedMarketGroup[];
 
     return data
-      .map((group) => filterGroupForCategory(group, leagueSlug, marketType))
-      .filter((row): row is CategoryMarketRow => row !== null)
-      .sort((a, b) => a.kickoffUnix - b.kickoffUnix);
+      .filter(
+        (group) => filterGroupForCategory(group, leagueSlug, marketType) !== null,
+      )
+      .sort((a, b) => {
+        const kickoff = (tags: string[] | undefined) => {
+          const tag = tags?.find((entry) => entry.startsWith("kickoff-"));
+
+          return tag ? Number(tag.slice(8)) : 0;
+        };
+
+        return kickoff(a.tags) - kickoff(b.tags);
+      });
   }, [data, leagueSlug, marketType]);
 
   return {
-    rows,
+    groups,
     isLoading,
     error,
     fetchNextPage: undefined,

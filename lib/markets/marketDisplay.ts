@@ -46,10 +46,20 @@ function resolveOutcomeDisplay(
   locale: Locale,
   teams?: FixtureTeams,
 ): string {
+  if (marketType === "1x2" && teams) {
+    const home = teams.home.name.trim();
+    const away = teams.away.name.trim();
+
+    if (outcomeKey === "home") return `${home} win`;
+    if (outcomeKey === "draw") return "Draw";
+    if (outcomeKey === "away") return `${away} win`;
+  }
+
   if (teams) {
     if (outcomeKey === "home") return teams.home.name;
     if (outcomeKey === "away") return teams.away.name;
   }
+
   return getOutcomeLabel(marketType, outcomeKey, locale);
 }
 
@@ -65,6 +75,10 @@ export function getOutcomeTeamLogo(
     if (outcomeKey === "home") return getTeamLogo(teams.home);
     if (outcomeKey === "away") return getTeamLogo(teams.away);
     return null;
+  }
+
+  if (marketType === "beat" && outcomeKey === "yes") {
+    return getTeamLogo(teams.home);
   }
 
   if (marketType === "dnb") {
@@ -119,7 +133,7 @@ export function parseSubMarketIdentity(name: string): SubMarketIdentity | null {
   return null;
 }
 
-/** Compact outcome label for overview/list pages (draw → X, team names for 1X2). */
+/** Compact outcome label for overview/list pages. */
 export function formatOverviewOutcomeLabel(
   marketType: MarketTypeId,
   outcomeKey: string,
@@ -127,7 +141,7 @@ export function formatOverviewOutcomeLabel(
   teams?: FixtureTeams,
 ): string {
   if (marketType === "1x2" && outcomeKey === "draw") {
-    return "X";
+    return "Draw";
   }
 
   if (marketType === "double_chance") {

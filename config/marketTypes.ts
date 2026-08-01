@@ -13,6 +13,7 @@ import { marketTypeLabels, type MarketTypeLocaleLabels } from "./marketTypeLabel
 export type { Locale, SupportedLang } from "./locales";
 
 export type MarketTypeId =
+  | "beat"
   | "1x2"
   | "btts"
   | "ou15"
@@ -30,6 +31,12 @@ export interface MarketTypeDef {
 }
 
 export const MARKET_TYPES: Record<MarketTypeId, MarketTypeDef> = {
+  beat: {
+    id: "beat",
+    legacyNamePrefix: "Beat ·",
+    outcomeKeys: ["yes", "no"],
+    sortOrder: 0,
+  },
   "1x2": {
     id: "1x2",
     legacyNamePrefix: "1X2 ·",
@@ -96,7 +103,10 @@ function labelsFor(
   marketType: MarketTypeId,
   locale: Locale,
 ): MarketTypeLocaleLabels {
-  const pack = marketTypeLabels[marketType];
+  const pack = marketTypeLabels[marketType] as Partial<
+    Record<Locale, MarketTypeLocaleLabels>
+  > & { en: MarketTypeLocaleLabels };
+
   return pack[locale] ?? pack.en;
 }
 

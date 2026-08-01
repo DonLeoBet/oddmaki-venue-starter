@@ -1,6 +1,6 @@
 import type { BrandId } from "./brandRouting";
+import { LIVE_LEAGUE_SLUGS } from "./liveLeagues";
 import type { MarketTypeId } from "./marketTypes";
-import { ALL_LEAGUE_SLUGS } from "./leagues";
 
 export interface BrandMarketsConfig {
   visibleLeagues: string[];
@@ -18,27 +18,25 @@ export interface BrandMarketsConfig {
 
 export const BRAND_MARKETS: Record<BrandId, BrandMarketsConfig> = {
   polyfootball: {
-    visibleLeagues: ALL_LEAGUE_SLUGS,
+    visibleLeagues: [...LIVE_LEAGUE_SLUGS],
     visibleMarketTypes: [
       "1x2",
       "btts",
       "ou15",
       "ou25",
       "ou35",
-      "dnb",
     ],
     categoryNavMarketTypes: ["btts", "ou25"],
     overviewCardMarketTypes: ["1x2", "btts", "ou25"],
   },
   topclass: {
-    visibleLeagues: ALL_LEAGUE_SLUGS,
+    visibleLeagues: [...LIVE_LEAGUE_SLUGS],
     visibleMarketTypes: [
       "1x2",
       "btts",
       "ou15",
       "ou25",
       "ou35",
-      "dnb",
     ],
     categoryNavMarketTypes: ["btts", "ou25"],
     overviewCardMarketTypes: ["1x2", "btts", "ou25"],

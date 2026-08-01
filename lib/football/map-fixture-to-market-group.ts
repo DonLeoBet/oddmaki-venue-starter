@@ -1,7 +1,10 @@
 import type { ApiFootballFixtureRow, PreparedMatchMarketGroup, MatchMarketCategory } from "./types";
 
 import { MAX_TAGS } from "@/config/tags.config";
-import { getMatchMarketsTag } from "@/config/matchMarkets.config";
+import {
+  getMatchImportMarketTypes,
+  getMatchMarketsTag,
+} from "@/config/matchMarkets.config";
 import { LEAGUE_BY_ID, leagueSlugTag } from "@/config/leagues";
 import { canonicalSubMarketName } from "@/config/marketTypes";
 
@@ -34,94 +37,108 @@ interface OutcomeSpec {
   description: string;
 }
 
+function buildOutcomesForType(
+  category: MatchMarketCategory,
+  home: string,
+  away: string,
+  sharedContext: string,
+  ref: string,
+): OutcomeSpec[] {
+  const addBinary = (
+    outcomeKey: string,
+    question: string,
+    description: string,
+  ): OutcomeSpec => ({
+    name: canonicalSubMarketName(category, outcomeKey),
+    category,
+    outcomeKey,
+    question,
+    description,
+  });
+
+  switch (category) {
+    case "beat":
+      return [
+        addBinary(
+          "yes",
+          `Will ${home} beat ${away}?`,
+          `Official full-time result (90 minutes + stoppage time). Resolves YES if ${home} wins. Resolves NO on a draw or ${away} win. ${sharedContext} Ref: ${ref}-BEAT-Y.`,
+        ),
+        addBinary(
+          "no",
+          `Will ${home} fail to beat ${away}?`,
+          `Official full-time result (90 minutes + stoppage time). Resolves YES on a draw or ${away} win. ${sharedContext} Ref: ${ref}-BEAT-N.`,
+        ),
+      ];
+    case "1x2":
+      return [
+        addBinary(
+          "home",
+          `Will ${home} beat ${away}?`,
+          `Official full-time result (90 minutes + stoppage time). Resolves YES if ${home} wins. ${sharedContext} Ref: ${ref}-1X2-H.`,
+        ),
+        addBinary(
+          "draw",
+          `Will ${home} vs ${away} be a draw?`,
+          `Official full-time result (90 minutes + stoppage time). Resolves YES on a draw. ${sharedContext} Ref: ${ref}-1X2-D.`,
+        ),
+        addBinary(
+          "away",
+          `Will ${away} beat ${home}?`,
+          `Official full-time result (90 minutes + stoppage time). Resolves YES if ${away} wins. ${sharedContext} Ref: ${ref}-1X2-A.`,
+        ),
+      ];
+    case "btts":
+      return [
+        addBinary(
+          "yes",
+          `Will both teams score in ${home} vs ${away}?`,
+          `Both teams score at least one goal in official play. ${sharedContext} Ref: ${ref}-BTTS-Y.`,
+        ),
+        addBinary(
+          "no",
+          `Will at least one team fail to score in ${home} vs ${away}?`,
+          `At least one team fails to score in official play. ${sharedContext} Ref: ${ref}-BTTS-N.`,
+        ),
+      ];
+    case "ou15":
+    case "ou25":
+    case "ou35": {
+      const line = category === "ou15" ? "1.5" : category === "ou25" ? "2.5" : "3.5";
+      const overGoals = category === "ou15" ? 2 : category === "ou25" ? 3 : 4;
+      const underGoals = category === "ou35" ? 3 : 2;
+
+      return [
+        addBinary(
+          "over",
+          `Will ${home} vs ${away} have over ${line} goals?`,
+          `Total goals exceed ${line} in official play (resolves YES on ${overGoals}+ goals). ${sharedContext} Ref: ${ref}-OU${line.replace(".", "")}-O.`,
+        ),
+        addBinary(
+          "under",
+          `Will ${home} vs ${away} have under ${line} goals?`,
+          `Total goals under ${line} in official play (resolves YES on ${underGoals} or fewer). ${sharedContext} Ref: ${ref}-OU${line.replace(".", "")}-U.`,
+        ),
+      ];
+    }
+    default:
+      return [];
+  }
+}
+
 function buildOutcomes(
   home: string,
   away: string,
   sharedContext: string,
   ref: string,
 ): OutcomeSpec[] {
-  const specs: OutcomeSpec[] = [];
+  return getMatchImportMarketTypes().flatMap((category) =>
+    buildOutcomesForType(category as MatchMarketCategory, home, away, sharedContext, ref),
+  );
+}
 
-  const addBinary = (
-    category: MatchMarketCategory,
-    outcomeKey: string,
-    question: string,
-    description: string,
-  ) => {
-    specs.push({
-      name: canonicalSubMarketName(category, outcomeKey),
-      category,
-      outcomeKey,
-      question,
-      description,
-    });
-  };
-
-  addBinary(
-    "1x2",
-    "home",
-    `Will ${home} win ${home} vs ${away}?`,
-    `Official full-time result (90 minutes + stoppage time). Resolves YES if ${home} wins. ${sharedContext} Ref: ${ref}-1X2-H.`,
-  );
-  addBinary(
-    "1x2",
-    "draw",
-    `Will ${home} vs ${away} end in a draw?`,
-    `Official full-time result (90 minutes + stoppage time). Resolves YES on a draw. ${sharedContext} Ref: ${ref}-1X2-D.`,
-  );
-  addBinary(
-    "1x2",
-    "away",
-    `Will ${away} win ${home} vs ${away}?`,
-    `Official full-time result (90 minutes + stoppage time). Resolves YES if ${away} wins. ${sharedContext} Ref: ${ref}-1X2-A.`,
-  );
-
-  addBinary(
-    "btts",
-    "yes",
-    `Will both teams score in ${home} vs ${away}?`,
-    `Both teams score at least one goal in official play. ${sharedContext} Ref: ${ref}-BTTS-Y.`,
-  );
-  addBinary(
-    "btts",
-    "no",
-    `Will at least one team fail to score in ${home} vs ${away}?`,
-    `At least one team fails to score in official play. ${sharedContext} Ref: ${ref}-BTTS-N.`,
-  );
-
-  for (const line of [
-    { cat: "ou15" as const, line: "1.5", over: 2, under: 2 },
-    { cat: "ou25" as const, line: "2.5", over: 3, under: 2 },
-    { cat: "ou35" as const, line: "3.5", over: 4, under: 3 },
-  ]) {
-    addBinary(
-      line.cat,
-      "over",
-      `Will ${home} vs ${away} have over ${line.line} goals?`,
-      `Total goals exceed ${line.line} in official play (resolves YES on ${line.over}+ goals). ${sharedContext} Ref: ${ref}-OU${line.line.replace(".", "")}-O.`,
-    );
-    addBinary(
-      line.cat,
-      "under",
-      `Will ${home} vs ${away} have under ${line.line} goals?`,
-      `Total goals under ${line.line} in official play (resolves YES on ${line.under} or fewer). ${sharedContext} Ref: ${ref}-OU${line.line.replace(".", "")}-U.`,
-    );
-  }
-
-  addBinary(
-    "dnb",
-    "home",
-    `Draw No Bet: will ${home} win ${home} vs ${away}?`,
-    `DNB home — YES if ${home} wins; push/refund logic per market rules on draw. ${sharedContext} Ref: ${ref}-DNB-H.`,
-  );
-  addBinary(
-    "dnb",
-    "away",
-    `Draw No Bet: will ${away} win ${home} vs ${away}?`,
-    `DNB away — YES if ${away} wins; push/refund logic per market rules on draw. ${sharedContext} Ref: ${ref}-DNB-A.`,
-  );
-
-  return specs;
+function importMarketTypeSummary(): string {
+  return "Home to win (beat)";
 }
 
 /**
@@ -159,7 +176,7 @@ export function mapFixtureToMarketGroup(
 
   const description =
     `Official match markets for ${home} vs ${away}. Kickoff: ${kickoffLabel}. ` +
-    `League: ${league.name}. Standard lines: 1X2, BTTS, O/U 1.5/2.5/3.5, DNB. ` +
+    `League: ${league.name}. Standard lines: ${importMarketTypeSummary()}. ` +
     `Market resolves based on official tournament statistics. Ref: ${ref}.${metaBlock}`;
 
   const tags = [

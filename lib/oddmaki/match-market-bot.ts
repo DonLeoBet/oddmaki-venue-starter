@@ -18,6 +18,7 @@ import {
 } from "viem";
 
 import { fixtureTag, getOutrightIdempotencyTag } from "@/lib/football/constants";
+import { isRetiredBeatOnlyMatchGroup } from "@/lib/markets/marketFilters";
 import {
   DIAMOND_ADDRESS,
   USDC_ADDRESS,
@@ -148,7 +149,53 @@ export async function loadExistingFixtureTags(
   client: OddMakiClient,
   venueId: bigint,
 ): Promise<Set<string>> {
-  return collectAutomationTags(client, venueId, "fixture-");
+  const tags = new Set<string>();
+  const pageSize = 100;
+
+  for (let skip = 0; ; skip += pageSize) {
+    const result = (await client.public.getMarketGroups({
+      venueId,
+      first: pageSize,
+      skip,
+    })) as {
+      marketGroups?: Array<{
+        tags?: string[];
+        totalMarkets?: string | number;
+        markets?: Array<{ marketName?: string; name?: string }>;
+      }>;
+    };
+
+    const groups = result.marketGroups ?? [];
+
+    if (groups.length === 0) break;
+
+    for (const group of groups) {
+      const groupTags = group.tags ?? [];
+      const outcomes = (group.markets ?? []).map((market) => ({
+        name: market.marketName ?? market.name ?? "",
+      }));
+      const isRetiredEredivisieBeat =
+        groupTags.includes("match-markets-v2") &&
+        groupTags.includes("league-eredivisie") &&
+        Number(group.totalMarkets ?? 0) === 2;
+
+      // Retired beat-only groups may be replaced with a fresh 1X2 import.
+      if (
+        isRetiredEredivisieBeat ||
+        isRetiredBeatOnlyMatchGroup(groupTags, outcomes)
+      ) {
+        continue;
+      }
+
+      for (const tag of groupTags) {
+        if (tag.startsWith("fixture-")) tags.add(tag);
+      }
+    }
+
+    if (groups.length < pageSize) break;
+  }
+
+  return tags;
 }
 
 export async function loadExistingOutrightTags(

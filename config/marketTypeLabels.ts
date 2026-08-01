@@ -13,10 +13,30 @@ export interface MarketTypeLocaleLabels {
 
 export type MarketTypeLabelsMap = Record<
   string,
-  Record<Locale, MarketTypeLocaleLabels>
+  Partial<Record<Locale, MarketTypeLocaleLabels>> & {
+    en: MarketTypeLocaleLabels;
+  }
 >;
 
 export const marketTypeLabels = {
+  beat: {
+    en: {
+      title: "To Win",
+      tabLabel: "Beat",
+      outcomes: {
+        yes: "Yes",
+        no: "No",
+      },
+    },
+    nl: {
+      title: "Wint",
+      tabLabel: "Beat",
+      outcomes: {
+        yes: "Ja",
+        no: "Nee",
+      },
+    },
+  },
   "1x2": {
     en: {
       title: "Match Result (1X2)",

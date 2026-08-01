@@ -8,8 +8,10 @@ import { isKickoffOnOrAfterMinDate } from "@/lib/football/fixture-window";
 import {
   isOutrightGroup,
   buildMaxOutrightRevisionMap,
+  isRetiredBeatOnlyMatchGroup,
   isSupersededOutrightInBatch,
 } from "@/lib/markets/marketFilters";
+import { isPublicOutrightGroup } from "@/config/outrights.config";
 import { isPublicMatchGroup } from "@/config/matchMarkets.config";
 
 const MATCH_RESULT_DATE = /Match Result \((.+)\)\s*$/;
@@ -131,6 +133,8 @@ export function filterFeedHideLegacyOutrights(
     if (item.type !== "group") return true;
     if (!isOutrightGroup(item.data.tags)) return true;
 
+    if (!isPublicOutrightGroup(item.data.tags)) return false;
+
     return !isSupersededOutrightInBatch(item.data.tags, maxRevision);
   });
 }
@@ -151,7 +155,12 @@ export function filterFeedHideRetiredMatchMarkets(
         isFixtureMarket(tags) ||
         tags?.some((tag) => tag.startsWith("match-markets"))
       ) {
-        return isPublicMatchGroup(tags);
+        if (!isPublicMatchGroup(tags)) return false;
+        if (isRetiredBeatOnlyMatchGroup(tags, item.data.outcomes ?? [])) {
+          return false;
+        }
+
+        return true;
       }
     }
 

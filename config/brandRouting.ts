@@ -22,6 +22,9 @@ const SHARED_LEAGUE_SLUGS: Record<string, string> = {
   "serie-a": "serie-a",
   bundesliga: "bundesliga",
   "ligue-1": "ligue-1",
+  "super-lig": "super-lig",
+  "liga-profesional": "liga-profesional",
+  brasileirao: "brasileirao",
 };
 
 /**
@@ -40,6 +43,7 @@ export const FUTURE_BRAND_ROUTING_EXAMPLES: Record<
     leagueSlugMappings: SHARED_LEAGUE_SLUGS,
     matchMarketsSegment: "markets",
     marketTypeSlugMappings: {
+      beat: "beat",
       "1x2": "1x2",
       btts: "btts",
       ou15: "ou15",
@@ -58,6 +62,7 @@ export const BRAND_ROUTING: Record<BrandId, BrandRoutingConfig> = {
     leagueSlugMappings: SHARED_LEAGUE_SLUGS,
     matchMarketsSegment: "markets",
     marketTypeSlugMappings: {
+      beat: "beat",
       "1x2": "1x2",
       btts: "btts",
       ou15: "ou15",
@@ -73,6 +78,7 @@ export const BRAND_ROUTING: Record<BrandId, BrandRoutingConfig> = {
     leagueSlugMappings: SHARED_LEAGUE_SLUGS,
     matchMarketsSegment: "markets",
     marketTypeSlugMappings: {
+      beat: "beat",
       "1x2": "match-result",
       btts: "both-teams-to-score",
       ou15: "over-15-goals",
@@ -88,6 +94,7 @@ export const BRAND_ROUTING: Record<BrandId, BrandRoutingConfig> = {
     leagueSlugMappings: SHARED_LEAGUE_SLUGS,
     matchMarketsSegment: "markets",
     marketTypeSlugMappings: {
+      beat: "beat",
       "1x2": "1x2",
       btts: "beide-scoren",
       ou15: "over-onder-15",

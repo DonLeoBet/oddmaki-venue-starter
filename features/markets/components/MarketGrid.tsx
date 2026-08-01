@@ -16,6 +16,7 @@ import {
   filterFeedHideLegacyOutrights,
   filterFeedHideRetiredMatchMarkets,
 } from "../utils/kickoffSort";
+import { filterFeaturedMatches } from "../utils/featuredMatches";
 
 import { MarketCard } from "./MarketCard";
 import { MarketSkeleton } from "./MarketSkeleton";
@@ -199,11 +200,16 @@ export function MarketGrid() {
       }
     }
 
-    const mainGridItems = filteredItems.filter((item) => !isOutrightFeedItem(item));
+    const matchItems = filteredItems.filter((item) => !isOutrightFeedItem(item));
+    const mainGridItems = !selectedCategory
+      ? filterFeaturedMatches(matchItems)
+      : matchItems;
 
     return {
       mainGridItems,
-      outrightSectionItems: outrightFeedItems,
+      outrightSectionItems: !selectedCategory
+        ? outrightFeedItems.slice(0, 4)
+        : outrightFeedItems,
       outrightSectionTitle: "Long-term odds",
       outrightViewAllHref: "/?category=outrights",
     };

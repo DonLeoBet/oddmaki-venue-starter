@@ -124,6 +124,15 @@ export const queryKeys = {
     all: ["fixtureTeams"] as const,
     detail: (fixtureId?: string) => ["fixtureTeams", fixtureId] as const,
   },
+  matchContext: {
+    all: ["matchContext"] as const,
+    detail: (fixtureId?: string) => ["matchContext", fixtureId] as const,
+  },
+
+  matchSocial: {
+    all: ["matchSocial"] as const,
+    thread: (fixtureId?: string) => ["matchSocial", "thread", fixtureId] as const,
+  },
 
   leagueTeams: {
     all: ["leagueTeams"] as const,

@@ -17,9 +17,12 @@ import { MatchCardHeader } from "./overview/MatchCardHeader";
 import { OneXTwoOverviewRow } from "./overview/OneXTwoOverviewRow";
 import { alpha, colors } from "@/lib/tokens";
 import { getMatchGroupHref } from "@/features/market-groups/utils/matchGroupPaths";
+import type { MarketTypeId } from "@/config/marketTypes";
 
 interface MarketGroupCardProps {
   group: FormattedMarketGroup;
+  /** When set, only show this market type (category league pages). */
+  focusMarketType?: MarketTypeId;
 }
 
 function OutcomeChip({
@@ -181,7 +184,7 @@ function OverviewSectionRow({
   );
 }
 
-export function MarketGroupCard({ group }: MarketGroupCardProps) {
+export function MarketGroupCard({ group, focusMarketType }: MarketGroupCardProps) {
   const { brandId, locale } = useBrand();
   const overviewMarketTypes = getOverviewCardMarketTypes(brandId);
   const parsedTitle = group.marketQuestion.match(/^(.+?)\s+vs\s+(.+?)\s+—/i);
@@ -192,11 +195,13 @@ export function MarketGroupCard({ group }: MarketGroupCardProps) {
         away: { name: parsedTitle[2].trim() },
       }
     : undefined;
+  const visibleTypes =
+    focusMarketType != null ? [focusMarketType] : overviewMarketTypes;
   const sections = groupOutcomesForOverview(
     group.outcomes,
     locale,
     teams,
-    overviewMarketTypes,
+    visibleTypes,
   );
   const isResolved = group.status === MarketGroupStatus.RESOLVED;
   const detailHref = getMatchGroupHref(

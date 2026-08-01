@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { useMarketGroupDetail } from "@/features/market-groups/hooks/useMarketGroupDetail";
@@ -27,6 +27,10 @@ import {
 import { useBrand } from "@/features/brand";
 import { useFixtureTeams } from "@/features/football/hooks/useFixtureTeams";
 import { useLeagueTeamLogos } from "@/features/football/hooks/useLeagueTeamLogos";
+import { MatchContextSidebar } from "@/features/football/components/MatchContextSidebar";
+import { MatchFaqSection } from "@/features/football/components/MatchFaqSection";
+import { MatchSocialPanel } from "@/features/football/components/MatchSocialPanel";
+import { LiveMatchTradingNotice } from "@/features/football/components/LiveMatchTradingNotice";
 import { isOutrightGroup } from "@/lib/markets/marketFilters";
 
 interface MarketGroupDetailViewProps {
@@ -52,6 +56,11 @@ export function MarketGroupDetailView({ groupId }: MarketGroupDetailViewProps) {
   const { resolveLogo: resolveOutrightLogo } = useLeagueTeamLogos(
     isOutright ? group?.tags : undefined,
   );
+  const fixtureMarkets = markets ?? [];
+  const displayMarkets = useMemo(
+    () => fixtureMarkets.filter((market) => !market.isPlaceholder),
+    [fixtureMarkets],
+  );
 
   const handleSelectMarket = (marketId: string, outcomeIndex: 0 | 1 = 0) => {
     setSelectedMarketId(marketId);
@@ -59,18 +68,18 @@ export function MarketGroupDetailView({ groupId }: MarketGroupDetailViewProps) {
   };
 
   useEffect(() => {
-    if (markets && markets.length > 0 && !selectedMarketId) {
-      const firstActive = markets.find(
+    if (displayMarkets.length > 0 && !selectedMarketId) {
+      const firstActive = displayMarkets.find(
         (m) => !m.isPlaceholder && m.status === "Active",
       );
 
       if (firstActive) {
         setSelectedMarketId(firstActive.marketId);
       } else {
-        setSelectedMarketId(markets[0].marketId);
+        setSelectedMarketId(displayMarkets[0].marketId);
       }
     }
-  }, [markets, selectedMarketId]);
+  }, [displayMarkets, selectedMarketId]);
 
   if (groupLoading || marketsLoading) {
     return <MarketGroupDetailSkeleton />;
@@ -95,7 +104,7 @@ export function MarketGroupDetailView({ groupId }: MarketGroupDetailViewProps) {
     );
   }
 
-  const selectedMarket = markets?.find((m) => m.marketId === selectedMarketId);
+  const selectedMarket = displayMarkets.find((m) => m.marketId === selectedMarketId);
   const selectedMarketLabel =
     selectedMarket ?
       formatSubMarketLabel(selectedMarket.name, locale, fixtureTeams)
@@ -121,14 +130,14 @@ export function MarketGroupDetailView({ groupId }: MarketGroupDetailViewProps) {
       />
 
       {showDebug && (
-        <MatchMarketsDebugPanel groupTags={group.tags} markets={markets || []} />
+        <MatchMarketsDebugPanel groupTags={group.tags} markets={fixtureMarkets} />
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-[1fr_338px] gap-4 items-start">
         <div className="flex flex-col gap-4">
           <GroupOutcomesList
             isOutrightGroup={isOutright}
-            markets={markets || []}
+            markets={displayMarkets}
             resolveOutcomeLogo={isOutright ? resolveOutrightLogo : undefined}
             selectedMarketId={selectedMarketId}
             teams={fixtureTeams}
@@ -153,6 +162,16 @@ export function MarketGroupDetailView({ groupId }: MarketGroupDetailViewProps) {
                 tickSize={selectedMarket.tickSize}
               />
               <MarketDescription description={selectedMarket.description} />
+              {!isOutright && fixtureTeams && (
+                <MatchSocialPanel
+                  awayTeamName={fixtureTeams.away.name}
+                  groupTags={group.tags}
+                  homeTeamName={fixtureTeams.home.name}
+                />
+              )}
+              {!isOutright && (
+                <MatchFaqSection groupTags={group.tags} />
+              )}
               <UserOrdersPanel
                 isResolved={selectedMarket.status === "Resolved"}
                 marketId={selectedMarket.marketId}
@@ -179,7 +198,11 @@ export function MarketGroupDetailView({ groupId }: MarketGroupDetailViewProps) {
                   resolvedOutcome={selectedMarket.resolvedOutcome}
                 />
               ) : (
-                <UnifiedTradingPanel
+                <>
+                  {!isOutright && (
+                    <LiveMatchTradingNotice groupTags={group.tags} />
+                  )}
+                  <UnifiedTradingPanel
                   key={selectedMarket.marketId}
                   initialOutcomeIndex={selectedOutcomeIndex}
                   marketId={selectedMarket.marketId}
@@ -191,6 +214,7 @@ export function MarketGroupDetailView({ groupId }: MarketGroupDetailViewProps) {
                   tickSize={selectedMarket.tickSize}
                   yesPrice={selectedMarket.yesPrice}
                 />
+                </>
               )}
               {selectedMarket.status === "Resolved" ? (
                 <RedeemPanel
@@ -203,6 +227,9 @@ export function MarketGroupDetailView({ groupId }: MarketGroupDetailViewProps) {
                   marketId={selectedMarket.marketId}
                   outcomes={selectedMarket.outcomes}
                 />
+              )}
+              {!isOutright && (
+                <MatchContextSidebar groupTags={group.tags} />
               )}
             </>
           )}

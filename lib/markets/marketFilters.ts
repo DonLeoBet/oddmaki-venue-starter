@@ -4,6 +4,7 @@ import {
   parseLeagueSlugFromTags,
 } from "@/config/leagues";
 import { isPublicMatchGroup } from "@/config/matchMarkets.config";
+import { isPublicOutrightGroup } from "@/config/outrights.config";
 import {
   FIXTURE_TAG_PREFIX,
   OUTRIGHT_TAG_PREFIX,
@@ -124,6 +125,13 @@ export function isOutrightGroup(tags: string[] | undefined): boolean {
   );
 }
 
+/** Outright group eligible for public feeds (current season + import revision). */
+export function isNewTaxonomyOutrightGroup(tags: string[] | undefined): boolean {
+  if (!isOutrightGroup(tags)) return false;
+
+  return isPublicOutrightGroup(tags);
+}
+
 export function getOutrightTag(tags: string[] | undefined): string | null {
   return tags?.find((tag) => tag.startsWith(OUTRIGHT_TAG_PREFIX)) ?? null;
 }
@@ -137,6 +145,29 @@ export function groupHasCanonicalMarkets(
   );
 }
 
+/** Beat-only v2 groups from the mistaken Aug 2026 multi-league import — hide + pause. */
+export function isBeatOnlyMatchGroup(outcomes: SubMarketLike[]): boolean {
+  const canonical = outcomes.filter(
+    (outcome) =>
+      !outcome.isPlaceholder && isCanonicalSubMarketName(outcome.name),
+  );
+
+  if (canonical.length === 0) return false;
+
+  return canonical.every((outcome) =>
+    outcome.name.trim().toLowerCase().startsWith("beat:"),
+  );
+}
+
+export function isRetiredBeatOnlyMatchGroup(
+  tags: string[] | undefined,
+  outcomes: SubMarketLike[],
+): boolean {
+  if (!tags?.includes("match-markets-v2")) return false;
+
+  return isBeatOnlyMatchGroup(outcomes);
+}
+
 /** Match fixture group eligible for public feeds (current import revision). */
 export function isNewTaxonomyMatchGroup(
   tags: string[] | undefined,
@@ -144,6 +175,7 @@ export function isNewTaxonomyMatchGroup(
 ): boolean {
   if (isOutrightGroup(tags)) return false;
   if (!isPublicMatchGroup(tags)) return false;
+  if (isRetiredBeatOnlyMatchGroup(tags, outcomes)) return false;
 
   return hasMatchMarketsTag(tags) || groupHasCanonicalMarkets(outcomes);
 }
@@ -171,7 +203,14 @@ export function groupMatchesLeagueSlug(
 
   const league = LEAGUE_BY_SLUG[leagueSlug];
 
-  return league ? tags.includes(league.tag) : false;
+  if (!league) return false;
+
+  if (tags.includes(league.tag)) return true;
+
+  // Markets imported before a league was registered use league-{id} slugs.
+  const legacySlug = `league-${league.id}`;
+
+  return parsed === legacySlug || tags.includes(leagueSlugTag(legacySlug));
 }
 
 /** Keep only canonical sub-markets for UI lists. */

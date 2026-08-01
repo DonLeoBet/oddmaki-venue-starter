@@ -31,7 +31,7 @@ interface OneXTwoOverviewRowProps {
   resolvedMarketId: string;
 }
 
-/** Branded 1X2 summary row for overview cards. */
+/** Branded 1X2 summary row for overview cards (text only — no crests). */
 export function OneXTwoOverviewRow({
   outcomes,
   isResolved,

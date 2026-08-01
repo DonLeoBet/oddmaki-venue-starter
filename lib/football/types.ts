@@ -26,11 +26,17 @@ export interface ApiFootballLeague {
 }
 
 export interface ApiFootballFixtureRow {
-  fixture: ApiFootballFixture;
+  fixture: ApiFootballFixture & {
+    venue?: { id?: number; name?: string; city?: string };
+  };
   league: ApiFootballLeague;
   teams: {
     home: ApiFootballTeam;
     away: ApiFootballTeam;
+  };
+  goals?: {
+    home: number | null;
+    away: number | null;
   };
 }
 
@@ -41,6 +47,7 @@ export interface ApiFootballFixturesResponse {
 
 /** Payload aligned with OddMaki group-market creation (NegRisk / market group) */
 export type MatchMarketCategory =
+  | "beat"
   | "1x2"
   | "btts"
   | "ou15"

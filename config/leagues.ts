@@ -86,6 +86,30 @@ export const LEAGUES: Record<string, LeagueDef> = {
     nameEn: "Ligue 1",
     nameNl: "Ligue 1",
   },
+  superLig: {
+    id: 203,
+    slug: "super-lig",
+    tag: "Süper Lig",
+    countryTag: "Turkish Football",
+    nameEn: "Süper Lig",
+    nameNl: "Süper Lig",
+  },
+  ligaProfesional: {
+    id: 128,
+    slug: "liga-profesional",
+    tag: "Liga Profesional",
+    countryTag: "Argentine Football",
+    nameEn: "Liga Profesional",
+    nameNl: "Liga Profesional",
+  },
+  brasileirao: {
+    id: 71,
+    slug: "brasileirao",
+    tag: "Brasileirão",
+    countryTag: "Brazilian Football",
+    nameEn: "Brasileirão",
+    nameNl: "Brasileirão",
+  },
 };
 
 export const LEAGUE_BY_ID: Record<number, LeagueDef> = Object.fromEntries(

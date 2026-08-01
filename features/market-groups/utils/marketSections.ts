@@ -94,7 +94,6 @@ export function groupMarketsBySection(
     }
 
     if (
-      !forMatchDetail &&
       section !== "other" &&
       !isMarketTypeVisibleForBrand(brandId, section)
     ) {

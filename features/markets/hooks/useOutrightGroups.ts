@@ -16,6 +16,7 @@ import {
   isOutrightGroup,
   isSupersededOutrightInBatch,
 } from "@/lib/markets/marketFilters";
+import { isPublicOutrightGroup } from "@/config/outrights.config";
 
 const PAGE_SIZE = 100;
 const MAX_GROUPS = 1000;
@@ -73,7 +74,9 @@ async function fetchOutrightMarketGroups(
   );
 
   return groups.filter(
-    (group) => !isSupersededOutrightInBatch(group.tags, maxRevision),
+    (group) =>
+      !isSupersededOutrightInBatch(group.tags, maxRevision) &&
+      isPublicOutrightGroup(group.tags),
   );
 }
 
