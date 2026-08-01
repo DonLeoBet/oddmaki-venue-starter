@@ -90,7 +90,7 @@ async function fetchLeagueFixtures(
 
   const { from, to } = upcomingDateWindow(maxDaysAhead);
 
-  for (const seasonCandidate of [season, season + 1]) {
+  for (const seasonCandidate of [season, season - 1, season + 1]) {
     const byDate = filterUpcoming(
       await fetchFixturesByLeagueDateRange({
         leagueId,
@@ -176,29 +176,53 @@ export interface FetchLeagueFixturesByMaxRoundOptions {
 export async function fetchLeagueFixturesByMaxRound(
   options: FetchLeagueFixturesByMaxRoundOptions,
 ): Promise<ApiFootballFixtureRow[]> {
-  const season = options.season ?? currentSeasonYear();
+  const baseSeason = options.season ?? currentSeasonYear();
   const from = options.from ?? getFixtureMinKickoffDateYmd();
   const toDate = new Date(`${from}T00:00:00.000Z`);
   toDate.setUTCDate(toDate.getUTCDate() + 90);
   const to = options.to ?? formatDateYmd(toDate);
 
-  const raw = await fetchFixturesByLeagueDateRange({
-    leagueId: options.leagueId,
-    season,
-    from,
-    to,
-  });
+  const seasonCandidates = [
+    baseSeason,
+    baseSeason - 1,
+    baseSeason + 1,
+  ].filter((value, index, list) => list.indexOf(value) === index);
 
-  const filtered = filterFixturesByMaxRound(
-    filterMinKickoff(filterUpcoming(raw)),
-    options.maxRound,
-  );
+  for (const season of seasonCandidates) {
+    const raw = await fetchFixturesByLeagueDateRange({
+      leagueId: options.leagueId,
+      season,
+      from,
+      to,
+    });
 
-  filtered.sort((a, b) => a.fixture.timestamp - b.fixture.timestamp);
+    const upcoming = filterMinKickoff(filterUpcoming(raw));
+    const filtered = filterFixturesByMaxRound(upcoming, options.maxRound);
+
+    if (filtered.length > 0) {
+      filtered.sort((a, b) => a.fixture.timestamp - b.fixture.timestamp);
+
+      console.info(
+        `[fetch-upcoming-fixtures] league ${options.leagueId} season ${season} rounds 1-${options.maxRound}: ${filtered.length} fixtures (${from}→${to})`,
+      );
+
+      return filtered;
+    }
+
+    if (upcoming.length > 0) {
+      upcoming.sort((a, b) => a.fixture.timestamp - b.fixture.timestamp);
+
+      console.info(
+        `[fetch-upcoming-fixtures] league ${options.leagueId} season ${season}: round filter 0 — using ${upcoming.length} upcoming fixtures (${from}→${to})`,
+      );
+
+      return upcoming;
+    }
+  }
 
   console.info(
-    `[fetch-upcoming-fixtures] league ${options.leagueId} season ${season} rounds 1-${options.maxRound}: ${filtered.length} fixtures (${from}→${to})`,
+    `[fetch-upcoming-fixtures] league ${options.leagueId}: no upcoming fixtures (${from}→${to}, seasons ${seasonCandidates.join("/")})`,
   );
 
-  return filtered;
+  return [];
 }

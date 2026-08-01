@@ -26,7 +26,7 @@ export const BRAND_MARKETS: Record<BrandId, BrandMarketsConfig> = {
       "ou25",
       "ou35",
     ],
-    categoryNavMarketTypes: ["btts", "ou25"],
+    categoryNavMarketTypes: ["1x2", "btts", "ou25"],
     overviewCardMarketTypes: ["1x2", "btts", "ou25"],
   },
   topclass: {
@@ -38,7 +38,7 @@ export const BRAND_MARKETS: Record<BrandId, BrandMarketsConfig> = {
       "ou25",
       "ou35",
     ],
-    categoryNavMarketTypes: ["btts", "ou25"],
+    categoryNavMarketTypes: ["1x2", "btts", "ou25"],
     overviewCardMarketTypes: ["1x2", "btts", "ou25"],
   },
   glazenbol: {

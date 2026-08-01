@@ -8,6 +8,7 @@ import { useSearchParams } from "next/navigation";
 import NextLink from "next/link";
 
 import { useUnifiedFeed } from "../hooks/useUnifiedFeed";
+import { useLeagueMatchGroups } from "../hooks/useLeagueMatchGroups";
 import { useOutrightGroups } from "../hooks/useOutrightGroups";
 import { useFilterToggle } from "../hooks/useFilterToggle";
 import {
@@ -81,6 +82,17 @@ export function MarketGrid() {
   const sortBy =
     sortParam === "new" && !selectedCategory ? "created" : "volume";
 
+  const leagueCategorySlug =
+    selectedCategory && LEAGUE_BY_SLUG[selectedCategory] ?
+      selectedCategory
+    : null;
+
+  const {
+    groups: leagueGroups,
+    isLoading: leagueGroupsLoading,
+    error: leagueGroupsError,
+  } = useLeagueMatchGroups(leagueCategorySlug, statusFilter);
+
   const {
     data,
     isLoading,
@@ -145,6 +157,15 @@ export function MarketGrid() {
     return sortUnifiedFeedItems(result, sortBy);
   }, [items, selectedCategory, statusFilter, sortBy]);
 
+  const leagueFeedItems = useMemo(
+    (): UnifiedFeedItem[] =>
+      leagueGroups.map((group) => ({
+        type: "group" as const,
+        data: group,
+      })),
+    [leagueGroups],
+  );
+
   const { mainGridItems, outrightSectionItems, outrightSectionTitle, outrightViewAllHref } =
     useMemo(() => {
     const outrightFeedItems: UnifiedFeedItem[] = outrightGroups.map((group) => ({
@@ -190,7 +211,7 @@ export function MarketGrid() {
         const leagueOutrights = filterOutrightsForLeague(selectedCategory);
 
         return {
-          mainGridItems: filteredItems.filter(
+          mainGridItems: leagueCategorySlug ? leagueFeedItems : filteredItems.filter(
             (item) => item.type !== "group" || !isOutrightGroup(item.data.tags),
           ),
           outrightSectionItems: leagueOutrights,
@@ -213,7 +234,7 @@ export function MarketGrid() {
       outrightSectionTitle: "Long-term odds",
       outrightViewAllHref: "/?category=outrights",
     };
-  }, [filteredItems, selectedCategory, leagueFilter, countryFilter, outrightGroups]);
+  }, [filteredItems, selectedCategory, leagueCategorySlug, leagueFeedItems, leagueFilter, countryFilter, outrightGroups]);
 
   const seriesIds = useMemo(
     () =>
@@ -227,15 +248,17 @@ export function MarketGrid() {
   );
   const { data: seriesWindows } = useSeriesCurrentWindows(seriesIds);
 
-  if (error) {
+  if (error || leagueGroupsError) {
+    const feedError = leagueGroupsError ?? error;
+
     // eslint-disable-next-line no-console
-    console.error("[MarketGrid] unified feed error:", error);
+    console.error("[MarketGrid] feed error:", feedError);
 
     return (
       <EmptyState
         description={
-          error instanceof Error
-            ? error.message
+          feedError instanceof Error
+            ? feedError.message
             : "There was an error loading markets. Please try again later."
         }
         title="Error loading markets"
@@ -243,7 +266,7 @@ export function MarketGrid() {
     );
   }
 
-  if (isLoading) {
+  if (isLoading || (leagueCategorySlug && leagueGroupsLoading)) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
         {Array.from({ length: 16 }).map((_, i) => (
@@ -270,6 +293,11 @@ export function MarketGrid() {
     outrightSectionItems.length > 0 &&
     selectedCategory !== "outrights";
 
+  const gridEmpty =
+    leagueCategorySlug ?
+      mainGridItems.length === 0 && !leagueGroupsLoading
+    : filteredItems.length === 0 && !hasNextPage;
+
   return (
     <div className="flex flex-1 flex-col gap-4">
       {showFilters && (
@@ -278,7 +306,7 @@ export function MarketGrid() {
         </div>
       )}
 
-      {filteredItems.length === 0 && !hasNextPage ? (
+      {gridEmpty ? (
         <EmptyState
           description="No markets match the current filters. Try adjusting your selection."
           title="No markets found"
@@ -352,11 +380,13 @@ export function MarketGrid() {
             </section>
           )}
 
-          <InfiniteScrollSentinel
-            hasNextPage={hasNextPage}
-            isFetchingNextPage={isFetchingNextPage}
-            onLoadMore={fetchNextPage}
-          />
+          {!leagueCategorySlug && (
+            <InfiniteScrollSentinel
+              hasNextPage={hasNextPage}
+              isFetchingNextPage={isFetchingNextPage}
+              onLoadMore={fetchNextPage}
+            />
+          )}
         </>
       )}
     </div>

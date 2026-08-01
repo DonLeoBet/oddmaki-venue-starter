@@ -6,6 +6,7 @@ import { ActivityFeed } from "./ActivityFeed";
 import { TopHoldersView } from "./TopHoldersView";
 import { PositionsView } from "./PositionsView";
 import { marketDetailTabClassNames } from "../marketDetailTabStyles";
+import { BookmakerOddsTab } from "@/features/football/components/BookmakerOddsTab";
 
 interface MarketDetailTabsProps {
   marketId: string;
@@ -13,6 +14,8 @@ interface MarketDetailTabsProps {
   tickSize: string;
   yesPrice: number;
   noPrice: number;
+  /** When set on fixture pages, shows a bookmaker reference odds tab. */
+  groupTags?: string[];
 }
 
 export function MarketDetailTabs({
@@ -21,6 +24,7 @@ export function MarketDetailTabs({
   tickSize,
   yesPrice,
   noPrice,
+  groupTags,
 }: MarketDetailTabsProps) {
   return (
     <Tabs
@@ -46,6 +50,11 @@ export function MarketDetailTabs({
           yesPrice={yesPrice}
         />
       </Tab>
+      {groupTags && (
+        <Tab key="bookmaker-odds" title="Bookmaker odds">
+          <BookmakerOddsTab groupTags={groupTags} />
+        </Tab>
+      )}
     </Tabs>
   );
 }

@@ -13,6 +13,9 @@ export const SUGGESTED_TAGS = [
   "Turkish Football",
   "Argentine Football",
   "Brazilian Football",
+  "Colombian Football",
+  "Bolivian Football",
+  "Chinese Football",
   "Champions League",
   "Europa League",
   "La Liga",
@@ -106,6 +109,21 @@ export const CATEGORIES: CategoryConfig[] = [
     id: "brasileirao",
     label: "Brasileirão",
     matchTags: ["Brasileirão"],
+  },
+  {
+    id: "primera-a",
+    label: "Primera A",
+    matchTags: ["Primera A"],
+  },
+  {
+    id: "primera-division-bo",
+    label: "Bolivia Primera División",
+    matchTags: ["Primera División BO"],
+  },
+  {
+    id: "chinese-super-league",
+    label: "Chinese Super League",
+    matchTags: ["Chinese Super League"],
   },
   {
     id: "crypto",

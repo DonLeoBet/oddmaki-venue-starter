@@ -110,6 +110,30 @@ export const LEAGUES: Record<string, LeagueDef> = {
     nameEn: "Brasileirão",
     nameNl: "Brasileirão",
   },
+  primeraA: {
+    id: 239,
+    slug: "primera-a",
+    tag: "Primera A",
+    countryTag: "Colombian Football",
+    nameEn: "Primera A",
+    nameNl: "Primera A",
+  },
+  primeraDivisionBo: {
+    id: 344,
+    slug: "primera-division-bo",
+    tag: "Primera División BO",
+    countryTag: "Bolivian Football",
+    nameEn: "Primera División",
+    nameNl: "Primera División",
+  },
+  chineseSuperLeague: {
+    id: 169,
+    slug: "chinese-super-league",
+    tag: "Chinese Super League",
+    countryTag: "Chinese Football",
+    nameEn: "Chinese Super League",
+    nameNl: "Chinese Super League",
+  },
 };
 
 export const LEAGUE_BY_ID: Record<number, LeagueDef> = Object.fromEntries(

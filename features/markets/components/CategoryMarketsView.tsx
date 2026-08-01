@@ -20,7 +20,7 @@ export function CategoryMarketsView({
   marketType,
 }: CategoryMarketsViewProps) {
   const { brandId, locale, getMarketTitle } = useBrand();
-  const { groups, isLoading } = useCategoryMarkets(leagueSlug, marketType);
+  const { groups, isLoading, error } = useCategoryMarkets(leagueSlug, marketType);
 
   const seo = buildCategorySeo(
     brandId,
@@ -36,6 +36,23 @@ export function CategoryMarketsView({
       <div className="flex justify-center py-16">
         <Spinner />
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <section className="flex flex-col gap-6 pt-4 pb-8 md:pt-6 md:pb-10">
+        <header>
+          <h1 className="text-2xl font-bold">{seo.h1}</h1>
+        </header>
+        <Card>
+          <CardBody>
+            <p className="text-danger text-sm">
+              Failed to load markets for this league. Please refresh and try again.
+            </p>
+          </CardBody>
+        </Card>
+      </section>
     );
   }
 

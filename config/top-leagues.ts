@@ -31,6 +31,7 @@ export const TOP_LEAGUES: TopLeague[] = [
   { id: 94, tag: "Primeira Liga", countryTag: "Portuguese Football", kind: "domestic" },
   { id: 71, tag: "Brasileirão", countryTag: "Brazilian Football", kind: "domestic" },
   { id: 128, tag: "Liga Profesional", countryTag: "Argentine Football", kind: "domestic" },
+  { id: 344, tag: "Primera División BO", countryTag: "Bolivian Football", kind: "domestic" },
   { id: 253, tag: "MLS", countryTag: "US Football", kind: "domestic" },
   { id: 203, tag: "Süper Lig", countryTag: "Turkish Football", kind: "domestic" },
   { id: 179, tag: "Scottish Premiership", countryTag: "Scottish Football", kind: "domestic" },

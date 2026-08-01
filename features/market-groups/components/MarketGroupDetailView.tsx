@@ -179,6 +179,7 @@ export function MarketGroupDetailView({ groupId }: MarketGroupDetailViewProps) {
                 tickSize={selectedMarket.tickSize}
               />
               <MarketDetailTabs
+                groupTags={!isOutright ? group.tags : undefined}
                 marketId={selectedMarket.marketId}
                 noPrice={selectedMarket.noPrice}
                 outcomes={selectedMarket.outcomes}

@@ -9,6 +9,9 @@ export const LIVE_LEAGUE_SLUGS = [
   "super-lig",
   "liga-profesional",
   "brasileirao",
+  "primera-a",
+  "primera-division-bo",
+  "chinese-super-league",
 ] as const;
 
 export type LiveLeagueSlug = (typeof LIVE_LEAGUE_SLUGS)[number];

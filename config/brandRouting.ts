@@ -25,6 +25,9 @@ const SHARED_LEAGUE_SLUGS: Record<string, string> = {
   "super-lig": "super-lig",
   "liga-profesional": "liga-profesional",
   brasileirao: "brasileirao",
+  "primera-a": "primera-a",
+  "primera-division-bo": "primera-division-bo",
+  "chinese-super-league": "chinese-super-league",
 };
 
 /**
