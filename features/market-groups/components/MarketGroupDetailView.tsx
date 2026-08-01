@@ -127,6 +127,7 @@ export function MarketGroupDetailView({ groupId }: MarketGroupDetailViewProps) {
       <div className="grid grid-cols-1 md:grid-cols-[1fr_338px] gap-4 items-start">
         <div className="flex flex-col gap-4">
           <GroupOutcomesList
+            isOutrightGroup={isOutright}
             markets={markets || []}
             resolveOutcomeLogo={isOutright ? resolveOutrightLogo : undefined}
             selectedMarketId={selectedMarketId}

@@ -33,6 +33,8 @@ interface GroupOutcomesListProps {
   onSelectMarket: (marketId: string, outcomeIndex?: 0 | 1) => void;
   teams?: FixtureTeams;
   resolveOutcomeLogo?: (outcomeName: string) => string | null;
+  /** Season-winner groups use team-name outcomes, not match bet types. */
+  isOutrightGroup?: boolean;
 }
 
 function MarketRow({
@@ -227,6 +229,7 @@ export function GroupOutcomesList({
   onSelectMarket,
   teams,
   resolveOutcomeLogo,
+  isOutrightGroup = false,
 }: GroupOutcomesListProps) {
   const { brandId, locale } = useBrand();
   const { yes: yesLabel, no: noLabel } = getCommonYesNo(locale);
@@ -236,9 +239,9 @@ export function GroupOutcomesList({
         brandId,
         locale,
         forMatchDetail: true,
-        allowOutrightOutcomes: Boolean(resolveOutcomeLogo),
+        allowOutrightOutcomes: isOutrightGroup,
       }),
-    [markets, brandId, locale, resolveOutcomeLogo],
+    [markets, brandId, locale, isOutrightGroup],
   );
   const placeholders = markets.filter((market) => market.isPlaceholder);
   const useTabs = sections.length > 1;
@@ -258,13 +261,17 @@ export function GroupOutcomesList({
     sections.find((section) => section.id === activeTab) ?? sections[0];
 
   const cardTitle =
-    sections.length === 1 ? sections[0].label : "Match Markets";
+    sections.length === 1
+      ? sections[0].label
+      : isOutrightGroup
+        ? "Outright winner"
+        : "Match Markets";
 
   return (
     <Card>
       <CardHeader>
         <h2 className="text-lg font-semibold">
-          {sections.length > 1 ? "Match Markets" : cardTitle}
+          {sections.length > 1 ? (isOutrightGroup ? "Outright winner" : "Match Markets") : cardTitle}
         </h2>
       </CardHeader>
       <CardBody className="gap-0 p-0">

@@ -76,7 +76,22 @@ export function groupMarketsBySection(
   const buckets = new Map<MarketTypeId | "other", GroupMarketDetail[]>();
 
   for (const market of activeMarkets) {
-    let section = categorizeGroupMarket(market);
+    let section: MarketTypeId | "other";
+
+    if (allowOutrightOutcomes && !isCanonicalSubMarketName(market.name)) {
+      section = "other";
+    } else {
+      section = categorizeGroupMarket(market);
+
+      if (
+        section === "other" &&
+        !allowOutrightOutcomes &&
+        !market.name.includes(" · ") &&
+        !market.name.includes(":")
+      ) {
+        section = "1x2";
+      }
+    }
 
     if (
       !forMatchDetail &&
@@ -84,15 +99,6 @@ export function groupMarketsBySection(
       !isMarketTypeVisibleForBrand(brandId, section)
     ) {
       continue;
-    }
-
-    if (
-      section === "other" &&
-      !allowOutrightOutcomes &&
-      !market.name.includes(" · ") &&
-      !market.name.includes(":")
-    ) {
-      section = "1x2";
     }
 
     const list = buckets.get(section) ?? [];
