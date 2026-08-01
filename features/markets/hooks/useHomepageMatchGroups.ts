@@ -21,7 +21,7 @@ export function useHomepageMatchGroups(statusFilter: StatusFilter) {
   const client = useOddMakiClient();
   const venueId = getVenueId();
 
-  const { data, isLoading, error, isFetching } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: queryKeys.homepageMatchGroups.list(
       venueId?.toString(),
       statusFilter,
@@ -29,8 +29,8 @@ export function useHomepageMatchGroups(statusFilter: StatusFilter) {
     queryFn: () =>
       fetchAllMatchGroupsFromUnifiedFeed(client, venueId!, "volume"),
     enabled: !!client && venueId !== undefined,
-    staleTime: 30_000,
-    refetchInterval: 60_000,
+    staleTime: 60_000,
+    refetchInterval: 120_000,
   });
 
   const groups = useMemo(() => {
@@ -53,5 +53,5 @@ export function useHomepageMatchGroups(statusFilter: StatusFilter) {
     return result.slice(0, HOMEPAGE_MAX);
   }, [data, statusFilter]);
 
-  return { groups, isLoading: isLoading || isFetching, error };
+  return { groups, isLoading, error };
 }

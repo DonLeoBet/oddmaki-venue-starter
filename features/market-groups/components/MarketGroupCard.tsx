@@ -215,38 +215,35 @@ export function MarketGroupCard({ group, focusMarketType }: MarketGroupCardProps
   );
 
   return (
-    <Card className="w-full min-h-[200px] border border-default-100/50">
-      <CardHeader className="flex flex-col items-start gap-2 pt-4 pb-0 flex-shrink-0">
-        <MatchCardHeader group={group} />
-      </CardHeader>
+    <NextLink className="block" href={detailHref}>
+      <Card className="w-full min-h-[200px] border border-default-100/50 hover:scale-[1.02] transition-transform cursor-pointer">
+        <CardHeader className="flex flex-col items-start gap-2 pt-4 pb-0 flex-shrink-0">
+          <MatchCardHeader group={group} />
+        </CardHeader>
 
-      <CardBody className="gap-0 py-2 overflow-y-auto flex-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {sections.length === 0 ?
-          <p className="text-xs text-default-400 px-1 py-2">No markets yet</p>
-        : <div className="flex flex-col divide-y divide-default-100/80">
-            {sections.map((section) => (
-              <OverviewSectionRow
-                key={section.marketType}
-                isResolved={isResolved}
-                resolvedMarketId={group.resolvedMarketId}
-                section={section}
-              />
-            ))}
+        <CardBody className="gap-0 py-2 overflow-y-auto flex-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {sections.length === 0 ?
+            <p className="text-xs text-default-400 px-1 py-2">No markets yet</p>
+          : <div className="flex flex-col divide-y divide-default-100/80">
+              {sections.map((section) => (
+                <OverviewSectionRow
+                  key={section.marketType}
+                  isResolved={isResolved}
+                  resolvedMarketId={group.resolvedMarketId}
+                  section={section}
+                />
+              ))}
+            </div>
+          }
+        </CardBody>
+
+        <CardFooter className="flex-shrink-0">
+          <div className="flex justify-between items-center w-full text-xs">
+            <span className="text-default-400">{group.volumeFormatted} Vol.</span>
+            <span className="font-semibold text-primary">All markets</span>
           </div>
-        }
-      </CardBody>
-
-      <CardFooter className="flex-shrink-0">
-        <div className="flex justify-between items-center w-full text-xs">
-          <span className="text-default-400">{group.volumeFormatted} Vol.</span>
-          <NextLink
-            className="font-semibold text-primary hover:underline"
-            href={detailHref}
-          >
-            All markets
-          </NextLink>
-        </div>
-      </CardFooter>
-    </Card>
+        </CardFooter>
+      </Card>
+    </NextLink>
   );
 }

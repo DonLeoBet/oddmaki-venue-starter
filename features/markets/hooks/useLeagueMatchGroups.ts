@@ -9,10 +9,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useOddMakiClient } from "@/lib/oddmaki/hooks";
 import { getVenueId } from "@/config/venue.config";
 import { queryKeys } from "@/lib/oddmaki/queryKeys";
-import { fetchAllMatchGroupsFromUnifiedFeed } from "@/lib/markets/fetchMatchGroups";
-import { filterMatchGroupsForFeed } from "@/lib/markets/filterMatchGroups";
+import { fetchLeagueMatchGroupsFromUnifiedFeed } from "@/lib/markets/fetchMatchGroups";
 
-/** Full paginated fetch for a single league — avoids unified-feed pagination gaps. */
+/** Paginated league fetch with early stop after two upcoming kickoff rounds. */
 export function useLeagueMatchGroups(
   leagueSlug: string | null,
   statusFilter: StatusFilter,
@@ -20,31 +19,29 @@ export function useLeagueMatchGroups(
   const client = useOddMakiClient();
   const venueId = getVenueId();
 
-  const { data, isLoading, error, isFetching } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: queryKeys.leagueMatchGroups.list(
       venueId?.toString(),
       leagueSlug ?? undefined,
       statusFilter,
     ),
     queryFn: () =>
-      fetchAllMatchGroupsFromUnifiedFeed(client, venueId!, "volume"),
+      fetchLeagueMatchGroupsFromUnifiedFeed(
+        client,
+        venueId!,
+        leagueSlug!,
+        statusFilter,
+      ),
     enabled: !!client && venueId !== undefined && leagueSlug != null,
-    staleTime: 30_000,
-    refetchInterval: 60_000,
+    staleTime: 60_000,
+    refetchInterval: 120_000,
   });
 
-  const groups = useMemo((): FormattedMarketGroup[] => {
-    if (!data || !leagueSlug) return [];
-
-    return filterMatchGroupsForFeed(data, {
-      statusFilter,
-      leagueSlug,
-    });
-  }, [data, leagueSlug, statusFilter]);
+  const groups = useMemo((): FormattedMarketGroup[] => data ?? [], [data]);
 
   return {
     groups,
-    isLoading: isLoading || isFetching,
+    isLoading,
     error,
   };
 }

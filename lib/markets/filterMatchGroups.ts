@@ -67,4 +67,62 @@ export function groupMatchesAnyLiveLeague(tags: string[] | undefined): boolean {
   return LIVE_LEAGUE_SLUGS.some((slug) => groupMatchesLeagueSlug(tags, slug));
 }
 
+/** Fixtures in the same domestic round usually kick off within a few days. */
+export const KICKOFF_ROUND_WINDOW_SEC = 4 * 24 * 60 * 60;
+
+/**
+ * Keep fixtures from at most `maxRounds` upcoming kickoff clusters.
+ * Groups without a kickoff tag are kept only when they fall inside kept rounds.
+ */
+export function limitMatchGroupsToUpcomingRounds(
+  groups: FormattedMarketGroup[],
+  maxRounds: number,
+): FormattedMarketGroup[] {
+  if (maxRounds <= 0 || groups.length === 0) return [];
+
+  const sorted = [...groups].sort(
+    (a, b) =>
+      (kickoffUnixFromTags(a.tags) ?? Number.MAX_SAFE_INTEGER) -
+      (kickoffUnixFromTags(b.tags) ?? Number.MAX_SAFE_INTEGER),
+  );
+
+  const rounds: FormattedMarketGroup[][] = [];
+  let currentRound: FormattedMarketGroup[] = [];
+  let roundStartUnix: number | null = null;
+
+  for (const group of sorted) {
+    const kickoff = kickoffUnixFromTags(group.tags);
+
+    if (kickoff == null) {
+      if (rounds.length < maxRounds) {
+        currentRound.push(group);
+      }
+
+      continue;
+    }
+
+    if (
+      roundStartUnix == null ||
+      kickoff - roundStartUnix > KICKOFF_ROUND_WINDOW_SEC
+    ) {
+      if (currentRound.length > 0) {
+        rounds.push(currentRound);
+
+        if (rounds.length >= maxRounds) break;
+      }
+
+      currentRound = [group];
+      roundStartUnix = kickoff;
+    } else {
+      currentRound.push(group);
+    }
+  }
+
+  if (currentRound.length > 0 && rounds.length < maxRounds) {
+    rounds.push(currentRound);
+  }
+
+  return rounds.slice(0, maxRounds).flat();
+}
+
 export { LIVE_LEAGUE_SLUGS };
