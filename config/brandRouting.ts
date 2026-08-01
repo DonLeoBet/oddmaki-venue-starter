@@ -166,7 +166,8 @@ export function buildMatchGroupPath(
   const league = routing.leagueSlugMappings[leagueSlug] ?? leagueSlug;
   const segment = routing.matchMarketsSegment;
   const base = routing.basePath.replace(/\/$/, "");
-  const matchPrefix = brandId === "glazenbol" ? "match/" : "";
+  const matchPrefix =
+    brandId === "glazenbol" || brandId === "topclass" ? "match/" : "";
   const path = `${matchPrefix}${league}/${matchSlug}/${segment}`;
 
   return base ? `${base}/${path}` : `/${path}`;
