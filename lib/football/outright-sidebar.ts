@@ -2,6 +2,11 @@ import type { FormattedMarketGroup } from "@/features/market-groups/types";
 
 import { LEAGUE_BY_ID } from "@/config/leagues";
 import { getTopLeagueById } from "@/config/top-leagues";
+import {
+  countryTagToKey,
+  countryTagToLabel,
+  countryTagToSlug,
+} from "@/lib/football/country-labels";
 import { getOutrightCardMeta } from "@/lib/football/outright-display";
 import { parseOutrightTag } from "@/lib/markets/marketFilters";
 
@@ -19,22 +24,7 @@ export interface OutrightCountryNavItem {
   leagues: OutrightLeagueNavItem[];
 }
 
-export function countryTagToSlug(countryTag: string): string {
-  return countryTag
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-}
-
-export function countryTagToLabel(countryTag: string): string {
-  const base = countryTag.replace(/ Football$/, "").trim();
-
-  if (base === "US") return "United States";
-  if (base === "South American") return "South America";
-  if (base === "European") return "Europe";
-
-  return base;
-}
+export { countryTagToLabel, countryTagToSlug } from "@/lib/football/country-labels";
 
 function resolveLeagueSlug(leagueId: number, leagueName: string): string {
   return LEAGUE_BY_ID[leagueId]?.slug ?? `league-${leagueId}`;
@@ -44,10 +34,8 @@ function resolveLeagueSlug(leagueId: number, leagueName: string): string {
 export function buildOutrightCountryTree(
   groups: FormattedMarketGroup[],
 ): OutrightCountryNavItem[] {
-  const byCountry = new Map<
-    string,
-    Map<number, OutrightLeagueNavItem>
-  >();
+  const byCountry = new Map<string, Map<number, OutrightLeagueNavItem>>();
+  const countryLabels = new Map<string, string>();
 
   for (const group of groups) {
     const tags = group.tags ?? [];
@@ -73,11 +61,14 @@ export function buildOutrightCountryTree(
     const leagueName = topLeague?.tag ?? meta.leagueName;
     const leagueSlug = resolveLeagueSlug(leagueId, leagueName);
 
-    if (!byCountry.has(countryTag)) {
-      byCountry.set(countryTag, new Map());
+    const countryKey = countryTagToKey(countryTag);
+
+    if (!byCountry.has(countryKey)) {
+      byCountry.set(countryKey, new Map());
+      countryLabels.set(countryKey, countryTagToLabel(countryTag));
     }
 
-    const leagues = byCountry.get(countryTag)!;
+    const leagues = byCountry.get(countryKey)!;
 
     if (!leagues.has(leagueId)) {
       leagues.set(leagueId, {
@@ -90,10 +81,10 @@ export function buildOutrightCountryTree(
   }
 
   return Array.from(byCountry.entries())
-    .map(([countryTag, leaguesMap]) => ({
-      countryTag,
-      countrySlug: countryTagToSlug(countryTag),
-      countryLabel: countryTagToLabel(countryTag),
+    .map(([countryKey, leaguesMap]) => ({
+      countryTag: countryLabels.get(countryKey) ?? countryKey,
+      countrySlug: countryKey,
+      countryLabel: countryLabels.get(countryKey) ?? countryKey,
       leagues: Array.from(leaguesMap.values()).sort((a, b) =>
         a.leagueName.localeCompare(b.leagueName),
       ),
@@ -108,7 +99,12 @@ export function groupMatchesCountryTag(
   if (!tags?.length) return false;
 
   for (const tag of tags) {
-    if (tag.endsWith(" Football") && countryTagToSlug(tag) === countrySlug) {
+    if (
+      tag.endsWith(" Football") &&
+      tag !== "sports" &&
+      !tag.startsWith("outright-") &&
+      countryTagToSlug(tag) === countrySlug
+    ) {
       return true;
     }
   }
@@ -119,7 +115,10 @@ export function groupMatchesCountryTag(
   if (parsed?.leagueId != null) {
     const topLeague = getTopLeagueById(parsed.leagueId);
 
-    if (topLeague && countryTagToSlug(topLeague.countryTag) === countrySlug) {
+    if (
+      topLeague &&
+      countryTagToSlug(topLeague.countryTag) === countrySlug
+    ) {
       return true;
     }
   }

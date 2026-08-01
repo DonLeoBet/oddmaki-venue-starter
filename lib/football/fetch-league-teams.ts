@@ -1,6 +1,7 @@
 import type { FixtureTeamSide } from "./fixture-teams";
 
 import { getTopLeagueById, OUTRIGHT_SEASON_YEAR } from "@/config/top-leagues";
+import { resolveOutrightLeaguesByIds } from "./discover-outright-leagues";
 import { fetchOutrightParticipants } from "./fetch-outright-participants";
 import { getTeamLogo } from "./team-logo";
 
@@ -15,7 +16,13 @@ export async function fetchLeagueTeamsById(
   leagueId: number,
   season: number = OUTRIGHT_SEASON_YEAR,
 ): Promise<LeagueTeamEntry[]> {
-  const league = getTopLeagueById(leagueId);
+  let league = getTopLeagueById(leagueId);
+
+  if (!league) {
+    const resolved = await resolveOutrightLeaguesByIds([leagueId], season);
+
+    league = resolved[0];
+  }
 
   if (!league) return [];
 
