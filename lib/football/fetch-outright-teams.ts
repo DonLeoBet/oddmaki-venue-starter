@@ -1,3 +1,8 @@
+import { MAX_OUTRIGHT_OUTCOMES_PER_GROUP } from "@/config/outrights.config";
+import { MAX_TAGS } from "@/config/tags.config";
+import { outrightTag } from "./constants";
+import { formatOutrightWinnerTitle, formatSeasonLabel } from "./season";
+
 import type { ApiFootballTeamRow } from "./api-football-client";
 import type { PreparedOutrightMarketGroup } from "./types";
 
@@ -7,11 +12,7 @@ import {
   type TopLeague,
 } from "@/config/top-leagues";
 import { fetchOutrightParticipants } from "./fetch-outright-participants";
-import { discoverOutrightLeaguesForSeason } from "./discover-outright-leagues";
-import { outrightTag } from "./constants";
-import { formatOutrightWinnerTitle, formatSeasonLabel } from "./season";
-
-import { MAX_TAGS } from "@/config/tags.config";
+import { discoverOutrightLeaguesForSeason, resolveOutrightLeaguesByIds } from "./discover-outright-leagues";
 
 const LOG_PREFIX = "[fetch-outright-league-teams]";
 const API_FETCH_DELAY_MS = 1_000;
@@ -50,7 +51,7 @@ export async function fetchOutrightLeagueTeams(
   let leagues: TopLeague[];
 
   if (options.leagueIds?.length) {
-    leagues = resolveTopLeagues(options.leagueIds);
+    leagues = await resolveOutrightLeaguesByIds(options.leagueIds, season);
   } else if (options.discoverWorld) {
     leagues = await discoverOutrightLeaguesForSeason(season);
     console.info(
@@ -144,6 +145,32 @@ export function mapOutrightToMarketGroup(input: {
   season: number;
   teams: ApiFootballTeamRow[];
 }): PreparedOutrightMarketGroup | null {
+  const groups = mapOutrightToMarketGroups(input);
+
+  return groups[0] ?? null;
+}
+
+function chunkOutrightTeams(
+  teams: Array<[number, string]>,
+  maxPerGroup: number,
+): Array<Array<[number, string]>> {
+  const chunks: Array<Array<[number, string]>> = [];
+
+  for (let index = 0; index < teams.length; index += maxPerGroup) {
+    chunks.push(teams.slice(index, index + maxPerGroup));
+  }
+
+  return chunks;
+}
+
+/** Map league squads to one or more outright groups (large cups split under NegRisk limits). */
+export function mapOutrightToMarketGroups(input: {
+  leagueId: number;
+  leagueTag: string;
+  countryTag: string;
+  season: number;
+  teams: ApiFootballTeamRow[];
+}): PreparedOutrightMarketGroup[] {
   const uniqueTeams = new Map<number, string>();
 
   for (const row of input.teams) {
@@ -152,26 +179,47 @@ export function mapOutrightToMarketGroup(input: {
     if (name) uniqueTeams.set(row.team.id, name);
   }
 
-  if (uniqueTeams.size < 2) return null;
+  if (uniqueTeams.size < 2) return [];
+
+  const sortedTeams = Array.from(uniqueTeams.entries()).sort((a, b) =>
+    a[1].localeCompare(b[1]),
+  );
+  const teamChunks =
+    sortedTeams.length > MAX_OUTRIGHT_OUTCOMES_PER_GROUP
+      ? chunkOutrightTeams(sortedTeams, MAX_OUTRIGHT_OUTCOMES_PER_GROUP)
+      : [sortedTeams];
 
   const seasonLabel = formatSeasonLabel(input.season);
   const ref = `OUT-${input.leagueId}`;
-  const title = formatOutrightWinnerTitle(input.leagueTag, input.season);
-  const description =
-    `Which team will officially win the tournament title for the ${seasonLabel} season? ` +
-    `Exactly one outcome resolves YES. Market resolves based on official tournament statistics. Ref: ${ref}.`;
+  const partCount = teamChunks.length;
 
-  const tags = [
-    outrightTag(input.leagueId, input.season),
-    "outrights",
-    "sports",
-    input.leagueTag,
-    input.countryTag,
-  ].slice(0, MAX_TAGS);
+  return teamChunks.map((chunk, chunkIndex) => {
+    const partIndex = partCount > 1 ? chunkIndex + 1 : undefined;
+    const title = formatOutrightWinnerTitle(
+      input.leagueTag,
+      input.season,
+      partIndex != null ? { index: partIndex, total: partCount } : undefined,
+    );
+    const partNote =
+      partIndex != null
+        ? `Part ${partIndex} of ${partCount} for the ${input.leagueTag} outright winner. `
+        : "";
+    const description =
+      `${partNote}Which team will officially win the tournament title for the ${seasonLabel} season? ` +
+      `Exactly one outcome resolves YES across the full tournament field. ` +
+      `Market resolves based on official tournament statistics. Ref: ${ref}` +
+      (partIndex != null ? `-P${partIndex}` : "") +
+      ".";
 
-  const outcomes = Array.from(uniqueTeams.entries())
-    .sort((a, b) => a[1].localeCompare(b[1]))
-    .map(([teamId, teamName]) => ({
+    const tags = [
+      outrightTag(input.leagueId, input.season, partIndex),
+      "outrights",
+      "sports",
+      input.leagueTag,
+      input.countryTag,
+    ].slice(0, MAX_TAGS);
+
+    const outcomes = chunk.map(([teamId, teamName]) => ({
       name: teamName,
       question: `Will ${teamName} win ${input.leagueTag} ${seasonLabel}?`,
       description:
@@ -179,20 +227,23 @@ export function mapOutrightToMarketGroup(input: {
         `Resolves YES if ${teamName} is crowned champion. Ref: ${ref}-T${teamId}.`,
     }));
 
-  return {
-    leagueId: input.leagueId,
-    season: input.season,
-    leagueName: input.leagueTag,
-    seasonLabel,
-    title,
-    description,
-    tags,
-    outcomes,
-    tickSize: "0.01",
-    additionalReward: 0,
-    liveness: 0,
-    activateImmediately: true,
-  };
+    return {
+      leagueId: input.leagueId,
+      season: input.season,
+      leagueName: input.leagueTag,
+      seasonLabel,
+      title,
+      description,
+      tags,
+      outcomes,
+      tickSize: "0.01" as const,
+      additionalReward: 0,
+      liveness: 0,
+      activateImmediately: true as const,
+      partIndex,
+      partCount: partCount > 1 ? partCount : undefined,
+    };
+  });
 }
 
 export interface PreparedOutrightFetchSummary {
@@ -211,16 +262,15 @@ export async function fetchPreparedOutrightMarketGroups(
     const leagueResults = await fetchOutrightLeagueTeams({ ...options, season });
     const groups = leagueResults
       .filter((batch) => batch.teams.length > 0)
-      .map((batch) =>
-        mapOutrightToMarketGroup({
+      .flatMap((batch) =>
+        mapOutrightToMarketGroups({
           leagueId: batch.leagueId,
           leagueTag: batch.leagueTag,
           countryTag: batch.countryTag,
           season: batch.season,
           teams: batch.teams,
         }),
-      )
-      .filter((group): group is PreparedOutrightMarketGroup => group != null);
+      );
 
     const errors = leagueResults
       .filter((result) => result.status !== "ok")

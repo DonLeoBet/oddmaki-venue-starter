@@ -176,3 +176,60 @@ export async function discoverOutrightLeaguesForSeason(
       a.countryTag.localeCompare(b.countryTag) || a.tag.localeCompare(b.tag),
   );
 }
+
+function mapApiLeagueRow(row: ApiLeagueRow): TopLeague {
+  const name = row.league.name.trim();
+  const kind: TopLeague["kind"] = row.league.type === "Cup" ? "cup" : "domestic";
+
+  return {
+    id: row.league.id,
+    tag: name,
+    countryTag:
+      kind === "cup"
+        ? cupCountryTag(name, row.country.name)
+        : countryTag(row.country.name),
+    kind,
+  };
+}
+
+/** Resolve explicit league IDs for retry imports (includes discovered leagues). */
+export async function resolveOutrightLeaguesByIds(
+  leagueIds: number[],
+  season: number,
+): Promise<TopLeague[]> {
+  const resolved = new Map<number, TopLeague>();
+  const missing: number[] = [];
+
+  for (const id of leagueIds) {
+    const known = TOP_LEAGUES.find((league) => league.id === id);
+
+    if (known) {
+      resolved.set(id, known);
+      continue;
+    }
+
+    missing.push(id);
+  }
+
+  for (const id of missing) {
+    const payload = await apiFootballGet<ApiLeaguesResponse>("/leagues", {
+      id,
+      season,
+    });
+    const errorMessage = extractApiFootballErrorMessage(payload.errors);
+
+    if (errorMessage) {
+      throw new Error(`League lookup failed for id=${id}: ${errorMessage}`);
+    }
+
+    const row = payload.response?.[0];
+
+    if (!row) continue;
+
+    resolved.set(id, mapApiLeagueRow(row));
+  }
+
+  return leagueIds
+    .map((id) => resolved.get(id))
+    .filter((league): league is TopLeague => league != null);
+}

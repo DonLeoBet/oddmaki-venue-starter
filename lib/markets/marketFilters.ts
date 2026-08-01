@@ -21,10 +21,12 @@ export interface ParsedOutrightTag {
   season: number;
   /** 0 when tag has no `-vN` revision suffix. */
   revision: number;
+  /** 1-based split index for large cups; 0 when not split. */
+  part: number;
 }
 
 export function parseOutrightTag(tag: string): ParsedOutrightTag | null {
-  const match = tag.match(/^outright-(\d+)-(\d+)(?:-v(\d+))?$/i);
+  const match = tag.match(/^outright-(\d+)-(\d+)(?:-v(\d+))?(?:-p(\d+))?$/i);
 
   if (!match) return null;
 
@@ -32,6 +34,7 @@ export function parseOutrightTag(tag: string): ParsedOutrightTag | null {
     leagueId: Number(match[1]),
     season: Number(match[2]),
     revision: match[3] ? Number(match[3]) : 0,
+    part: match[4] ? Number(match[4]) : 0,
   };
 }
 

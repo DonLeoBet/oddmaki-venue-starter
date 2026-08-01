@@ -1,4 +1,4 @@
-import { isRateLimitError } from "./errors";
+import { isTransientRpcError } from "./errors";
 
 const LOG_PREFIX = "[rpc/retry]";
 
@@ -44,13 +44,13 @@ export async function withRpcRetry<T>(
     } catch (error) {
       lastError = error;
 
-      if (!isRateLimitError(error) || attempt === maxAttempts - 1) {
+      if (!isTransientRpcError(error) || attempt === maxAttempts - 1) {
         throw error;
       }
 
       const delayMs = baseDelayMs * 2 ** attempt;
 
-      console.warn(`${LOG_PREFIX} Rate limit — backing off`, {
+      console.warn(`${LOG_PREFIX} Transient RPC error — backing off`, {
         label,
         attempt: attempt + 1,
         maxAttempts,

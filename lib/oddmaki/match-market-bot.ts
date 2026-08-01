@@ -17,15 +17,18 @@ import {
   type PublicClient,
 } from "viem";
 
-import { fixtureTag, outrightTag } from "@/lib/football/constants";
+import { fixtureTag, getOutrightIdempotencyTag } from "@/lib/football/constants";
 import {
   DIAMOND_ADDRESS,
   USDC_ADDRESS,
   USDC_DECIMALS,
 } from "@/lib/oddmaki/constants";
 import { cachedReadContract } from "@/lib/rpc/baseClient";
+import { withRpcRetry } from "@/lib/rpc/retry";
 
 const WAIT_MS = 2000;
+const BOT_RPC_MAX_ATTEMPTS = 8;
+const BOT_RPC_BASE_DELAY_MS = 500;
 
 interface PreparedMarketGroupPayload {
   title: string;
@@ -211,7 +214,14 @@ async function createPreparedMarketGroupOnChain(
   const txHashes: string[] = [];
 
   try {
-    const canCreate = await client.venue.canCreateMarket(signer, venueId);
+    const canCreate = await withRpcRetry(
+      () => client.venue.canCreateMarket(signer, venueId),
+      {
+        label: "canCreateMarket",
+        maxAttempts: BOT_RPC_MAX_ATTEMPTS,
+        baseDelayMs: BOT_RPC_BASE_DELAY_MS,
+      },
+    );
 
     if (!canCreate) {
       return {
@@ -339,7 +349,18 @@ export async function createOutrightMarketGroupOnChain(
   signer: Address,
   prepared: PreparedOutrightMarketGroup,
 ): Promise<OutrightCreationResult> {
-  const tag = outrightTag(prepared.leagueId, prepared.season);
+  const tag = getOutrightIdempotencyTag(prepared.tags);
+
+  if (!tag) {
+    return {
+      leagueId: prepared.leagueId,
+      season: prepared.season,
+      status: "failed",
+      partIndex: prepared.partIndex,
+      error: "Prepared outright group is missing an outright-* idempotency tag",
+    };
+  }
+
   const result = await createPreparedMarketGroupOnChain(
     client,
     publicClient,
@@ -357,6 +378,7 @@ export async function createOutrightMarketGroupOnChain(
       groupId: result.groupId,
       txHashes: result.txHashes,
       teamCount: prepared.outcomes.length,
+      partIndex: prepared.partIndex,
     };
   }
 
@@ -364,6 +386,7 @@ export async function createOutrightMarketGroupOnChain(
     leagueId: prepared.leagueId,
     season: prepared.season,
     status: "failed",
+    partIndex: prepared.partIndex,
     error: result.error,
   };
 }

@@ -50,6 +50,27 @@ function extractStatus(error: unknown): number | undefined {
   return undefined;
 }
 
+/** Transient network / provider errors worth retrying (includes rate limits). */
+export function isTransientRpcError(error: unknown): boolean {
+  if (isRateLimitError(error)) return true;
+
+  const message = extractMessage(error).toLowerCase();
+
+  return (
+    message.includes("fetch failed") ||
+    message.includes("network error") ||
+    message.includes("network request failed") ||
+    message.includes("econnreset") ||
+    message.includes("etimedout") ||
+    message.includes("socket hang up") ||
+    message.includes("timed out") ||
+    message.includes("timeout") ||
+    message.includes("503") ||
+    message.includes("502") ||
+    message.includes("504")
+  );
+}
+
 /** Detect HTTP 429, JSON-RPC -32005, and common provider rate-limit messages. */
 export function isRateLimitError(error: unknown): boolean {
   const status = extractStatus(error);

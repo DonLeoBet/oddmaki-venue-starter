@@ -42,9 +42,24 @@ export function kickoffTag(unixTimestamp: number): string {
 /** Tag prefix for idempotent league outright → market mapping */
 export const OUTRIGHT_TAG_PREFIX = "outright-";
 
-export function outrightTag(leagueId: number, season: number): string {
+export function outrightTag(
+  leagueId: number,
+  season: number,
+  part?: number,
+): string {
   const revision = process.env.OUTRIGHT_TAG_REVISION?.trim();
   const base = `${OUTRIGHT_TAG_PREFIX}${leagueId}-${season}`;
+  let tag = revision ? `${base}-${revision}` : base;
 
-  return revision ? `${base}-${revision}` : base;
+  if (part != null && part > 0) {
+    tag = `${tag}-p${part}`;
+  }
+
+  return tag;
+}
+
+export function getOutrightIdempotencyTag(
+  tags: string[] | undefined,
+): string | null {
+  return tags?.find((tag) => tag.startsWith(OUTRIGHT_TAG_PREFIX)) ?? null;
 }

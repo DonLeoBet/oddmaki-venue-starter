@@ -15,6 +15,13 @@ export function formatSeasonLabel(season: number): string {
 export function formatOutrightWinnerTitle(
   leagueName: string,
   season: number,
+  part?: { index: number; total: number },
 ): string {
-  return `${leagueName} ${formatSeasonLabel(season)} - Outright Winner`;
+  const base = `${leagueName} ${formatSeasonLabel(season)} - Outright Winner`;
+
+  if (part != null && part.total > 1) {
+    return `${base} (Part ${part.index} of ${part.total})`;
+  }
+
+  return base;
 }

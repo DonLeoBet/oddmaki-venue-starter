@@ -107,10 +107,14 @@ export interface PreparedOutrightMarketGroup {
   additionalReward: number;
   liveness: number;
   activateImmediately: true;
+  /** 1-based part index when a large cup is split across multiple groups. */
+  partIndex?: number;
+  /** Total parts when split; omitted for single-group outrights. */
+  partCount?: number;
 }
 
 export type OutrightCreationResult =
-  | { leagueId: number; season: number; status: "skipped"; reason: string }
+  | { leagueId: number; season: number; status: "skipped"; reason: string; partIndex?: number }
   | {
       leagueId: number;
       season: number;
@@ -118,6 +122,14 @@ export type OutrightCreationResult =
       groupId: string;
       txHashes: string[];
       teamCount: number;
+      partIndex?: number;
     }
-  | { leagueId: number; season: number; status: "failed"; error: string }
-  | { leagueId: number; season: number; status: "dry_run"; message: string; teamCount: number };
+  | { leagueId: number; season: number; status: "failed"; error: string; partIndex?: number }
+  | {
+      leagueId: number;
+      season: number;
+      status: "dry_run";
+      message: string;
+      teamCount: number;
+      partIndex?: number;
+    };

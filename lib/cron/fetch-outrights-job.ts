@@ -1,5 +1,5 @@
 import { OUTRIGHT_SEASON_YEAR } from "@/config/top-leagues";
-import { BOT_VENUE_ID, outrightTag } from "@/lib/football/constants";
+import { BOT_VENUE_ID, getOutrightIdempotencyTag } from "@/lib/football/constants";
 import { fetchPreparedOutrightMarketGroups } from "@/lib/football/fetch-outright-teams";
 import { ACTIVE_CHAIN_ID } from "@/lib/oddmaki/chain";
 import {
@@ -10,7 +10,7 @@ import { createBotWalletContext } from "@/lib/oddmaki/server-bot-client";
 
 const LOG_PREFIX = "[cron/fetch-outrights]";
 /** Pause between on-chain outright market groups to avoid nonce / RPC timeouts */
-export const OUTRIGHT_LEAGUE_TX_DELAY_MS = 2_000;
+export const OUTRIGHT_LEAGUE_TX_DELAY_MS = 3_000;
 
 function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -111,6 +111,7 @@ export async function runFetchOutrightsJob(options: {
         season: group.season,
         status: "dry_run" as const,
         teamCount: group.outcomes.length,
+        partIndex: group.partIndex,
         message: `Would create "${group.title}" with ${group.outcomes.length} teams`,
       })),
     };
@@ -130,6 +131,7 @@ export async function runFetchOutrightsJob(options: {
     status: "skipped" | "created" | "failed";
     groupId?: string;
     teamCount?: number;
+    partIndex?: number;
     reason?: string;
     error?: string;
   }> = [];
@@ -146,13 +148,26 @@ export async function runFetchOutrightsJob(options: {
       await wait(OUTRIGHT_LEAGUE_TX_DELAY_MS);
     }
 
-    const tag = outrightTag(prepared.leagueId, prepared.season);
+    const tag = getOutrightIdempotencyTag(prepared.tags);
+
+    if (!tag) {
+      failed += 1;
+      results.push({
+        leagueId: prepared.leagueId,
+        season: prepared.season,
+        status: "failed",
+        partIndex: prepared.partIndex,
+        error: "Prepared outright group is missing an outright-* idempotency tag",
+      });
+      continue;
+    }
 
     if (existingTags.has(tag)) {
       results.push({
         leagueId: prepared.leagueId,
         season: prepared.season,
         status: "skipped",
+        partIndex: prepared.partIndex,
         reason: `Outright market already exists (${tag})`,
       });
       skipped += 1;
@@ -164,6 +179,8 @@ export async function runFetchOutrightsJob(options: {
       season: prepared.season,
       title: prepared.title,
       teams: prepared.outcomes.length,
+      partIndex: prepared.partIndex,
+      tag,
     });
 
     try {
@@ -184,6 +201,7 @@ export async function runFetchOutrightsJob(options: {
           status: "created",
           groupId: result.groupId,
           teamCount: result.teamCount,
+          partIndex: result.partIndex,
         });
       } else if (result.status === "failed") {
         failed += 1;
@@ -191,6 +209,7 @@ export async function runFetchOutrightsJob(options: {
           leagueId: result.leagueId,
           season: result.season,
           status: "failed",
+          partIndex: result.partIndex,
           error: result.error,
         });
         logFetchOutrightsError(
@@ -203,6 +222,7 @@ export async function runFetchOutrightsJob(options: {
           leagueId: result.leagueId,
           season: result.season,
           status: "skipped",
+          partIndex: result.partIndex,
           reason: result.reason,
         });
       }
@@ -219,6 +239,7 @@ export async function runFetchOutrightsJob(options: {
         leagueId: prepared.leagueId,
         season: prepared.season,
         status: "failed",
+        partIndex: prepared.partIndex,
         error: message,
       });
     }
