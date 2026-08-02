@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useEffect, useState } from "react";
+import { useMemo, useEffect, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { useMarketGroupDetail } from "@/features/market-groups/hooks/useMarketGroupDetail";
@@ -32,12 +32,14 @@ import { MatchFaqSection } from "@/features/football/components/MatchFaqSection"
 import { MatchSocialPanel } from "@/features/football/components/MatchSocialPanel";
 import { LiveMatchTradingNotice } from "@/features/football/components/LiveMatchTradingNotice";
 import { isOutrightGroup } from "@/lib/markets/marketFilters";
+import { useIsMdUp } from "@/lib/hooks/useIsMdUp";
 
 interface MarketGroupDetailViewProps {
   groupId: string;
 }
 
 export function MarketGroupDetailView({ groupId }: MarketGroupDetailViewProps) {
+  const isMdUp = useIsMdUp();
   const searchParams = useSearchParams();
   const showDebug =
     process.env.NODE_ENV === "development" &&
@@ -104,7 +106,9 @@ export function MarketGroupDetailView({ groupId }: MarketGroupDetailViewProps) {
     );
   }
 
-  const selectedMarket = displayMarkets.find((m) => m.marketId === selectedMarketId);
+  const selectedMarket = displayMarkets.find(
+    (m) => m.marketId === selectedMarketId,
+  );
   const selectedMarketLabel =
     selectedMarket ?
       formatSubMarketLabel(selectedMarket.name, locale, fixtureTeams)
@@ -121,6 +125,60 @@ export function MarketGroupDetailView({ groupId }: MarketGroupDetailViewProps) {
         : null)
     : null;
 
+  const isResolved = selectedMarket?.status === "Resolved";
+  const canTrade = group.status !== "Draft" && !!selectedMarket;
+
+  const renderTradePanel = (): ReactNode => {
+    if (!canTrade || !selectedMarket) return null;
+
+    if (isResolved) {
+      return (
+        <ResolvedOutcomeCard
+          outcomes={selectedMarket.outcomes}
+          resolvedOutcome={selectedMarket.resolvedOutcome}
+        />
+      );
+    }
+
+    return (
+      <>
+        {!isOutright && <LiveMatchTradingNotice groupTags={group.tags} />}
+        <UnifiedTradingPanel
+          key={selectedMarket.marketId}
+          initialOutcomeIndex={selectedOutcomeIndex}
+          marketId={selectedMarket.marketId}
+          marketLabel={selectedMarketLabel ?? selectedMarket.name}
+          metadataURI={selectedMarket.metadataURI}
+          noPrice={selectedMarket.noPrice}
+          outcomes={selectedMarket.outcomes}
+          teamLogoUrl={selectedTeamLogo}
+          tickSize={selectedMarket.tickSize}
+          yesPrice={selectedMarket.yesPrice}
+        />
+      </>
+    );
+  };
+
+  const renderSettlementPanel = (): ReactNode => {
+    if (!canTrade || !selectedMarket) return null;
+
+    return isResolved ?
+        <RedeemPanel
+          standalone
+          marketId={selectedMarket.marketId}
+          outcomes={selectedMarket.outcomes}
+        />
+      : <ResolutionPanel
+          marketId={selectedMarket.marketId}
+          outcomes={selectedMarket.outcomes}
+        />;
+  };
+
+  const renderContextPanel = (): ReactNode =>
+    !isOutright && canTrade ?
+      <MatchContextSidebar groupTags={group.tags} />
+    : null;
+
   return (
     <section className="flex flex-col gap-6 pt-4 pb-8 md:pt-6 md:pb-10">
       <MarketGroupDetailHeader
@@ -130,11 +188,18 @@ export function MarketGroupDetailView({ groupId }: MarketGroupDetailViewProps) {
       />
 
       {showDebug && (
-        <MatchMarketsDebugPanel groupTags={group.tags} markets={fixtureMarkets} />
+        <MatchMarketsDebugPanel
+          groupTags={group.tags}
+          markets={fixtureMarkets}
+        />
       )}
 
+      {/*
+        Polymarket-style mobile: outcomes → buy/sell → chart/book → secondary.
+        Desktop: left market stack | sticky trade + context rail.
+      */}
       <div className="grid grid-cols-1 md:grid-cols-[1fr_338px] gap-4 items-start">
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 min-w-0">
           <GroupOutcomesList
             isOutrightGroup={isOutright}
             markets={displayMarkets}
@@ -144,7 +209,12 @@ export function MarketGroupDetailView({ groupId }: MarketGroupDetailViewProps) {
             onSelectMarket={handleSelectMarket}
           />
 
-          {group.status !== "Draft" && selectedMarket && (
+          {/* Mobile: trade immediately under outcomes */}
+          {canTrade && !isMdUp && (
+            <div className="flex flex-col gap-4">{renderTradePanel()}</div>
+          )}
+
+          {canTrade && selectedMarket && (
             <>
               <PriceChartPanel
                 lastPriceTick={selectedMarket.lastPriceTick_0}
@@ -161,19 +231,8 @@ export function MarketGroupDetailView({ groupId }: MarketGroupDetailViewProps) {
                 marketId={selectedMarket.marketId}
                 tickSize={selectedMarket.tickSize}
               />
-              <MarketDescription description={selectedMarket.description} />
-              {!isOutright && fixtureTeams && (
-                <MatchSocialPanel
-                  awayTeamName={fixtureTeams.away.name}
-                  groupTags={group.tags}
-                  homeTeamName={fixtureTeams.home.name}
-                />
-              )}
-              {!isOutright && (
-                <MatchFaqSection groupTags={group.tags} />
-              )}
               <UserOrdersPanel
-                isResolved={selectedMarket.status === "Resolved"}
+                isResolved={isResolved}
                 marketId={selectedMarket.marketId}
                 outcomes={selectedMarket.outcomes}
                 tickSize={selectedMarket.tickSize}
@@ -186,55 +245,36 @@ export function MarketGroupDetailView({ groupId }: MarketGroupDetailViewProps) {
                 tickSize={selectedMarket.tickSize}
                 yesPrice={selectedMarket.yesPrice}
               />
+
+              {/* Mobile: match intel + settlement after trading tools */}
+              {!isMdUp && (
+                <div className="flex flex-col gap-4">
+                  {renderContextPanel()}
+                  {renderSettlementPanel()}
+                </div>
+              )}
+
+              <MarketDescription description={selectedMarket.description} />
+              {!isOutright && fixtureTeams && (
+                <MatchSocialPanel
+                  awayTeamName={fixtureTeams.away.name}
+                  groupTags={group.tags}
+                  homeTeamName={fixtureTeams.home.name}
+                />
+              )}
+              {!isOutright && <MatchFaqSection groupTags={group.tags} />}
             </>
           )}
         </div>
 
-        <div className="flex flex-col gap-4 md:sticky md:top-4">
-          {group.status !== "Draft" && selectedMarket && (
-            <>
-              {selectedMarket.status === "Resolved" ? (
-                <ResolvedOutcomeCard
-                  outcomes={selectedMarket.outcomes}
-                  resolvedOutcome={selectedMarket.resolvedOutcome}
-                />
-              ) : (
-                <>
-                  {!isOutright && (
-                    <LiveMatchTradingNotice groupTags={group.tags} />
-                  )}
-                  <UnifiedTradingPanel
-                  key={selectedMarket.marketId}
-                  initialOutcomeIndex={selectedOutcomeIndex}
-                  marketId={selectedMarket.marketId}
-                  marketLabel={selectedMarketLabel ?? selectedMarket.name}
-                  metadataURI={selectedMarket.metadataURI}
-                  noPrice={selectedMarket.noPrice}
-                  outcomes={selectedMarket.outcomes}
-                  teamLogoUrl={selectedTeamLogo}
-                  tickSize={selectedMarket.tickSize}
-                  yesPrice={selectedMarket.yesPrice}
-                />
-                </>
-              )}
-              {selectedMarket.status === "Resolved" ? (
-                <RedeemPanel
-                  standalone
-                  marketId={selectedMarket.marketId}
-                  outcomes={selectedMarket.outcomes}
-                />
-              ) : (
-                <ResolutionPanel
-                  marketId={selectedMarket.marketId}
-                  outcomes={selectedMarket.outcomes}
-                />
-              )}
-              {!isOutright && (
-                <MatchContextSidebar groupTags={group.tags} />
-              )}
-            </>
-          )}
-        </div>
+        {/* Desktop sticky rail */}
+        {isMdUp && (
+          <div className="flex flex-col gap-4 sticky top-4 min-w-0">
+            {renderTradePanel()}
+            {renderSettlementPanel()}
+            {renderContextPanel()}
+          </div>
+        )}
       </div>
     </section>
   );
