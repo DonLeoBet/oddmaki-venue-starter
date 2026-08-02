@@ -8,7 +8,6 @@ import { useSearchParams } from "next/navigation";
 import NextLink from "next/link";
 
 import { useUnifiedFeed } from "../hooks/useUnifiedFeed";
-import { useLeagueMatchGroups } from "../hooks/useLeagueMatchGroups";
 import { useHomepageMatchGroups } from "../hooks/useHomepageMatchGroups";
 import { useOutrightGroups } from "../hooks/useOutrightGroups";
 import { useFilterToggle } from "../hooks/useFilterToggle";
@@ -89,19 +88,10 @@ export function MarketGrid() {
       selectedCategory
     : null;
 
-  const useUnifiedFeedEnabled = !isHomepage && !leagueCategorySlug;
-
-  const {
-    groups: leagueGroups,
-    isLoading: leagueGroupsLoading,
-    error: leagueGroupsError,
-  } = useLeagueMatchGroups(leagueCategorySlug, statusFilter);
-
-  const {
-    groups: homepageGroups,
-    isLoading: homepageLoading,
-    error: homepageError,
-  } = useHomepageMatchGroups(statusFilter, isHomepage);
+  // Progressive unified feed for league pages — the dedicated deep scan
+  // hung for minutes when a bulk import flooded "created" sort.
+  const useUnifiedFeedEnabled =
+    !isHomepage && selectedCategory !== "outrights";
 
   const {
     data,
@@ -111,6 +101,12 @@ export function MarketGrid() {
     fetchNextPage,
     isFetchingNextPage,
   } = useUnifiedFeed(sortBy, useUnifiedFeedEnabled);
+
+  const {
+    groups: homepageGroups,
+    isLoading: homepageLoading,
+    error: homepageError,
+  } = useHomepageMatchGroups(statusFilter, isHomepage);
 
   const {
     groups: outrightGroups,
@@ -167,15 +163,6 @@ export function MarketGrid() {
     return sortUnifiedFeedItems(result, sortBy);
   }, [items, selectedCategory, statusFilter, sortBy]);
 
-  const leagueFeedItems = useMemo(
-    (): UnifiedFeedItem[] =>
-      leagueGroups.map((group) => ({
-        type: "group" as const,
-        data: group,
-      })),
-    [leagueGroups],
-  );
-
   const homepageFeedItems = useMemo(
     (): UnifiedFeedItem[] =>
       homepageGroups.map((group) => ({
@@ -184,6 +171,31 @@ export function MarketGrid() {
       })),
     [homepageGroups],
   );
+
+  const leagueMatchItems = useMemo(
+    () =>
+      filteredItems.filter(
+        (item) => item.type !== "group" || !isOutrightGroup(item.data.tags),
+      ),
+    [filteredItems],
+  );
+
+  // Keep paging until a league slate fills — SA flood can bury other leagues.
+  useEffect(() => {
+    if (!leagueCategorySlug || !useUnifiedFeedEnabled) return;
+    if (!hasNextPage || isFetchingNextPage || isLoading) return;
+    if (leagueMatchItems.length >= 12) return;
+
+    fetchNextPage();
+  }, [
+    leagueCategorySlug,
+    useUnifiedFeedEnabled,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    leagueMatchItems.length,
+    fetchNextPage,
+  ]);
 
   const { mainGridItems, outrightSectionItems, outrightSectionTitle, outrightViewAllHref } =
     useMemo(() => {
@@ -230,9 +242,7 @@ export function MarketGrid() {
         const leagueOutrights = filterOutrightsForLeague(selectedCategory);
 
         return {
-          mainGridItems: leagueCategorySlug ? leagueFeedItems : filteredItems.filter(
-            (item) => item.type !== "group" || !isOutrightGroup(item.data.tags),
-          ),
+          mainGridItems: leagueMatchItems,
           outrightSectionItems: leagueOutrights,
           outrightSectionTitle: "Long-term odds",
           outrightViewAllHref: `/?category=outrights&league=${selectedCategory}`,
@@ -261,7 +271,7 @@ export function MarketGrid() {
     filteredItems,
     selectedCategory,
     leagueCategorySlug,
-    leagueFeedItems,
+    leagueMatchItems,
     homepageFeedItems,
     isHomepage,
     leagueFilter,
@@ -281,8 +291,8 @@ export function MarketGrid() {
   );
   const { data: seriesWindows } = useSeriesCurrentWindows(seriesIds);
 
-  if (error || leagueGroupsError || homepageError) {
-    const feedError = leagueGroupsError ?? homepageError ?? error;
+  if (error || homepageError) {
+    const feedError = homepageError ?? error;
 
     // eslint-disable-next-line no-console
     console.error("[MarketGrid] feed error:", feedError);
@@ -301,7 +311,6 @@ export function MarketGrid() {
 
   const feedLoading =
     (isHomepage && homepageLoading) ||
-    (leagueCategorySlug && leagueGroupsLoading) ||
     (useUnifiedFeedEnabled && isLoading);
 
   if (feedLoading) {
@@ -343,7 +352,10 @@ export function MarketGrid() {
     isHomepage ?
       mainGridItems.length === 0 && !homepageLoading
     : leagueCategorySlug ?
-      mainGridItems.length === 0 && !leagueGroupsLoading
+      mainGridItems.length === 0 &&
+      !isLoading &&
+      !isFetchingNextPage &&
+      !hasNextPage
     : filteredItems.length === 0 && !hasNextPage;
 
   const outrightSection = showOutrightSection ? (
