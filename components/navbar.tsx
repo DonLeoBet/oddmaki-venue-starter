@@ -16,52 +16,60 @@ import { MarketSearchBarShell } from "@/features/markets/components/MarketSearch
 
 export const Navbar = () => {
   return (
-    <HeroUINavbar
-      classNames={{
-        base: "bg-background/95 backdrop-blur-xl max-w-full overflow-x-hidden",
-        wrapper: "w-full max-w-full px-3 sm:px-6",
-      }}
-      maxWidth="full"
-      position="sticky"
-    >
-      <NavbarContent justify="start" className="min-w-0 gap-2">
-        <NavbarBrand className="flex-shrink-0 min-w-0">
-          <NextLink className="flex items-center gap-2" href="/">
-            <BrandLogo priority />
-          </NextLink>
-        </NavbarBrand>
-        <NavbarItem className="lg:hidden shrink-0">
-          <Suspense>
-            <MobileLeagueDrawer />
-          </Suspense>
-        </NavbarItem>
-      </NavbarContent>
-
-      <NavbarContent
-        className="hidden md:flex flex-1 max-w-2xl"
-        justify="center"
+    <header className="sticky top-0 z-40 w-full max-w-[100vw] overflow-x-hidden bg-background/95 backdrop-blur-xl">
+      <HeroUINavbar
+        classNames={{
+          base: "bg-transparent max-w-full relative z-10",
+          wrapper: "w-full max-w-full px-3 sm:px-6 h-14 min-h-14",
+        }}
+        height="3.5rem"
+        maxWidth="full"
+        position="static"
       >
-        <MarketSearchBarShell />
-      </NavbarContent>
+        <NavbarContent className="min-w-0 gap-2" justify="start">
+          <NavbarBrand className="flex-shrink-0 min-w-0 max-w-[40vw] sm:max-w-none">
+            <NextLink className="flex min-w-0 items-center gap-2" href="/">
+              <BrandLogo
+                className="h-7 w-auto max-w-full shrink-0 object-contain object-left sm:h-8"
+                height={28}
+                priority
+              />
+            </NextLink>
+          </NavbarBrand>
+          <NavbarItem className="lg:hidden shrink-0">
+            <Suspense>
+              <MobileLeagueDrawer />
+            </Suspense>
+          </NavbarItem>
+        </NavbarContent>
 
-      <NavbarContent className="gap-1 sm:gap-2 min-w-0 shrink" justify="end">
-        <NavbarItem className="hidden md:flex">
-          <CreateMarketButton />
-        </NavbarItem>
-        <NavbarItem className="min-w-0">
-          <div className="flex items-center gap-1 sm:gap-2">
-            <WalletPanel />
-            <TopUp className="hidden sm:flex font-semibold" />
-          </div>
-        </NavbarItem>
-        <NavbarItem className="shrink-0">
-          <ConnectButton />
-        </NavbarItem>
-      </NavbarContent>
+        <NavbarContent
+          className="hidden md:flex flex-1 max-w-2xl"
+          justify="center"
+        >
+          <MarketSearchBarShell />
+        </NavbarContent>
 
-      <NavbarContent className="md:hidden pb-2 basis-full" justify="center">
+        <NavbarContent className="gap-1 sm:gap-2 min-w-0 shrink-0" justify="end">
+          <NavbarItem className="hidden md:flex">
+            <CreateMarketButton />
+          </NavbarItem>
+          <NavbarItem className="min-w-0">
+            <div className="flex items-center gap-1 sm:gap-2">
+              <WalletPanel />
+              <TopUp className="hidden sm:flex font-semibold" />
+            </div>
+          </NavbarItem>
+          <NavbarItem className="shrink-0">
+            <ConnectButton />
+          </NavbarItem>
+        </NavbarContent>
+      </HeroUINavbar>
+
+      {/* Own row on mobile — HeroUI NavbarContent basis-full overlays the logo row */}
+      <div className="border-b border-default-100/60 px-3 pb-2.5 md:hidden">
         <MarketSearchBarShell />
-      </NavbarContent>
-    </HeroUINavbar>
+      </div>
+    </header>
   );
 };
