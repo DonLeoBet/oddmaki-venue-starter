@@ -12,6 +12,7 @@ import { fontSans } from "@/config/fonts";
 import { Navbar } from "@/components/navbar";
 import { AppShell } from "@/components/app-shell";
 import { NavigationProgress } from "@/components/navigation-progress";
+import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { CLUB_PAGES } from "@/config/clubPages";
 import Link from "next/link";
 
@@ -85,7 +86,8 @@ export default function RootLayout({
           <div className="relative flex min-h-screen flex-col overflow-x-hidden max-w-[100vw]">
             <Navbar />
             <AppShell>{children}</AppShell>
-            <footer className="w-full flex flex-col items-center justify-center gap-2 py-4">
+            <MobileBottomNav />
+            <footer className="hidden w-full flex-col items-center justify-center gap-2 py-4 lg:flex">
               <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm">
                 <Link
                   className="text-default-400 hover:text-primary transition-colors"

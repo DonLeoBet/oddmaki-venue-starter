@@ -11,14 +11,16 @@ import type { UnifiedFeedItem } from "../types";
 import { useOddMakiClient } from "@/lib/oddmaki/hooks";
 import { getVenueId } from "@/config/venue.config";
 import { queryKeys } from "@/lib/oddmaki/queryKeys";
+import { diversifyMatchGroupsByLeague } from "@/lib/markets/diversifyMatchGroups";
 import { fetchHomepageMatchGroupsFromUnifiedFeed } from "@/lib/markets/fetchMatchGroups";
 import { filterMatchGroupsForFeed } from "@/lib/markets/filterMatchGroups";
 
 const HOMEPAGE_MAX = 24;
-/** Fetch a bit more than we show so featured picks still have room. */
-const HOMEPAGE_FETCH_TARGET = 40;
+const HOMEPAGE_FETCH_TARGET = 60;
+const FEATURED_SLOTS = 8;
+const MAX_PER_LEAGUE = 3;
 
-/** Capped feed fetch for homepage — does not drain every market on the venue. */
+/** Capped + diversified homepage feed — mix of leagues, not one import flood. */
 export function useHomepageMatchGroups(
   statusFilter: StatusFilter,
   enabled = true,
@@ -54,7 +56,21 @@ export function useHomepageMatchGroups(
       } satisfies UnifiedFeedItem),
     );
 
-    const result = featured.length > 0 ? featured : live;
+    const result: typeof live = [];
+    const seen = new Set<string>();
+
+    for (const group of featured.slice(0, FEATURED_SLOTS)) {
+      result.push(group);
+      seen.add(group.groupId);
+    }
+
+    const rest = diversifyMatchGroupsByLeague(
+      live.filter((group) => !seen.has(group.groupId)),
+      HOMEPAGE_MAX - result.length,
+      MAX_PER_LEAGUE,
+    );
+
+    result.push(...rest);
 
     return result.slice(0, HOMEPAGE_MAX);
   }, [data, statusFilter]);

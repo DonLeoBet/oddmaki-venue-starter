@@ -14,8 +14,10 @@ import {
 } from "@/lib/markets/filterMatchGroups";
 
 const FEED_PAGE_SIZE = 50;
-/** Safety cap — ~40 pages of market groups for a single league fetch. */
-const LEAGUE_FETCH_MAX_SKIP = FEED_PAGE_SIZE * 40;
+/** Safety cap — scan deep enough that bulk SA imports don't hide other leagues. */
+const LEAGUE_FETCH_MAX_SKIP = FEED_PAGE_SIZE * 80;
+/** Don't early-stop until we've walked at least this many pages. */
+const LEAGUE_MIN_PAGES_BEFORE_STOP = 10;
 
 type RawGroupDisplay = {
   groupId: string;
@@ -85,12 +87,13 @@ export async function fetchAllMatchGroupsFromUnifiedFeed(
   return Array.from(byId.values());
 }
 
-/** Max unified-feed pages for homepage (~200 groups) — enough for 24 live cards. */
-const HOMEPAGE_MAX_PAGES = 4;
+/** Max unified-feed pages for homepage — scan enough for a multi-league mix. */
+const HOMEPAGE_MAX_PAGES = 12;
 
 /**
- * Homepage: stop after a few pages once enough live-league Active matches exist.
- * Avoids scanning the entire venue feed before painting ~24 cards.
+ * Homepage: paginate until we have enough live-league matches spanning
+ * multiple leagues (or hit the page cap). Uses created-sort for freshness
+ * but callers must diversify so one bulk import can't own the grid.
  */
 export async function fetchHomepageMatchGroupsFromUnifiedFeed(
   client: OddMakiClient,
@@ -125,7 +128,17 @@ export async function fetchHomepageMatchGroupsFromUnifiedFeed(
       liveLeaguesOnly: true,
     });
 
-    if (live.length >= targetCount) break;
+    const leagueSlugs = new Set(
+      live
+        .map((group) => {
+          const tag = group.tags?.find((entry) => entry.startsWith("league-"));
+
+          return tag ?? null;
+        })
+        .filter(Boolean),
+    );
+
+    if (live.length >= targetCount && leagueSlugs.size >= 4) break;
     if (batch.length < FEED_PAGE_SIZE) break;
 
     skip += FEED_PAGE_SIZE;
@@ -204,7 +217,18 @@ export async function fetchLeagueMatchGroupsFromUnifiedFeed(
     } else if (capped.length === prevCappedCount && batch.length > 0) {
       stablePages += 1;
 
-      if (stablePages >= 2 && capped.length > 0) break;
+      const pagesScanned = skip / FEED_PAGE_SIZE + 1;
+      const deepEnough = pagesScanned >= LEAGUE_MIN_PAGES_BEFORE_STOP;
+
+      // Require a real slate before stopping — 2 empty-adjacent pages after one
+      // hit used to strand league views when newer imports flooded the feed.
+      if (
+        deepEnough &&
+        stablePages >= 3 &&
+        capped.length >= 4
+      ) {
+        break;
+      }
     } else {
       stablePages = 0;
       prevCappedCount = capped.length;

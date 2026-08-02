@@ -1,5 +1,4 @@
 import NextLink from "next/link";
-import { Suspense } from "react";
 import {
   Navbar as HeroUINavbar,
   NavbarContent,
@@ -8,7 +7,6 @@ import {
 } from "@heroui/navbar";
 
 import { BrandLogo } from "@/components/brand";
-import { MobileLeagueDrawer } from "@/components/mobile-league-drawer";
 import { ConnectButton } from "@/features/auth";
 import { WalletPanel, TopUp } from "@/features/wallet/components";
 import { CreateMarketButton } from "@/features/market-creation";
@@ -27,7 +25,7 @@ export const Navbar = () => {
         position="static"
       >
         <NavbarContent className="min-w-0 gap-2" justify="start">
-          <NavbarBrand className="flex-shrink-0 min-w-0 max-w-[40vw] sm:max-w-none">
+          <NavbarBrand className="flex-shrink-0 min-w-0 max-w-[55vw] sm:max-w-none">
             <NextLink className="flex min-w-0 items-center gap-2" href="/">
               <BrandLogo
                 className="h-7 w-auto max-w-full shrink-0 object-contain object-left sm:h-8"
@@ -36,11 +34,6 @@ export const Navbar = () => {
               />
             </NextLink>
           </NavbarBrand>
-          <NavbarItem className="lg:hidden shrink-0">
-            <Suspense>
-              <MobileLeagueDrawer />
-            </Suspense>
-          </NavbarItem>
         </NavbarContent>
 
         <NavbarContent
@@ -66,7 +59,6 @@ export const Navbar = () => {
         </NavbarContent>
       </HeroUINavbar>
 
-      {/* Own row on mobile — HeroUI NavbarContent basis-full overlays the logo row */}
       <div className="border-b border-default-100/60 px-3 pb-2.5 md:hidden">
         <MarketSearchBarShell />
       </div>
