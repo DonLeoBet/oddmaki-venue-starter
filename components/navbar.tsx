@@ -7,29 +7,37 @@ import {
 } from "@heroui/navbar";
 
 import { BrandLogo } from "@/components/brand";
+import { BRAND_CONFIG } from "@/config/brand.config";
 import { ConnectButton } from "@/features/auth";
 import { WalletPanel, TopUp } from "@/features/wallet/components";
 import { CreateMarketButton } from "@/features/market-creation";
 import { MarketSearchBarShell } from "@/features/markets/components/MarketSearchBarShell";
 
 export const Navbar = () => {
+  const isWiseguy = BRAND_CONFIG.domain.includes("wiseguy");
+  const logoHeight = isWiseguy ? 42 : 28;
+
   return (
     <header className="sticky top-0 z-40 w-full max-w-[100vw] overflow-x-hidden bg-background/95 backdrop-blur-xl">
       <HeroUINavbar
         classNames={{
           base: "bg-transparent max-w-full relative z-10",
-          wrapper: "w-full max-w-full px-3 sm:px-6 h-14 min-h-14",
+          wrapper: `w-full max-w-full px-3 sm:px-6 ${isWiseguy ? "h-16 min-h-16" : "h-14 min-h-14"}`,
         }}
-        height="3.5rem"
+        height={isWiseguy ? "4rem" : "3.5rem"}
         maxWidth="full"
         position="static"
       >
         <NavbarContent className="min-w-0 gap-2" justify="start">
-          <NavbarBrand className="flex-shrink-0 min-w-0 max-w-[55vw] sm:max-w-none">
+          <NavbarBrand className="flex-shrink-0 min-w-0 max-w-[70vw] sm:max-w-none">
             <NextLink className="flex min-w-0 items-center gap-2" href="/">
               <BrandLogo
-                className="h-7 w-auto max-w-full shrink-0 object-contain object-left sm:h-8"
-                height={28}
+                className={
+                  isWiseguy ?
+                    "h-[42px] w-auto max-w-full shrink-0 object-contain object-left sm:h-11"
+                  : "h-7 w-auto max-w-full shrink-0 object-contain object-left sm:h-8"
+                }
+                height={logoHeight}
                 priority
               />
             </NextLink>

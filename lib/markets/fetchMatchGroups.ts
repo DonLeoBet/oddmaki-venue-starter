@@ -9,15 +9,14 @@ import {
 } from "@/lib/markets/marketFilters";
 import {
   filterMatchGroupsForFeed,
-  kickoffUnixFromTags,
   limitMatchGroupsToUpcomingRounds,
 } from "@/lib/markets/filterMatchGroups";
+import { HOMEPAGE_PRIORITY_LEAGUES } from "@/lib/markets/diversifyMatchGroups";
 
 const FEED_PAGE_SIZE = 50;
-/** Safety cap — scan deep enough that bulk SA imports don't hide other leagues. */
-const LEAGUE_FETCH_MAX_SKIP = FEED_PAGE_SIZE * 80;
-/** Don't early-stop until we've walked at least this many pages. */
-const LEAGUE_MIN_PAGES_BEFORE_STOP = 10;
+/** League category scan depth — stop once we have a usable slate. */
+const LEAGUE_MAX_PAGES = 24;
+const LEAGUE_TARGET_GROUPS = 24;
 
 type RawGroupDisplay = {
   groupId: string;
@@ -41,15 +40,16 @@ function formatRawMatchGroup(
   client: OddMakiClient,
   raw: Record<string, unknown>,
 ): FormattedMarketGroup {
-  const formatted = client.public.formatMarketGroupForDisplay(raw) as RawGroupDisplay;
+  const formatted = client.public.formatMarketGroupForDisplay(
+    raw,
+  ) as RawGroupDisplay;
 
   return formatMarketGroup(formatted, raw);
 }
 
 /**
  * Paginate the unified feed and collect non-outright match groups.
- * Prefer {@link fetchHomepageMatchGroupsFromUnifiedFeed} for the homepage —
- * draining every page makes first paint very slow.
+ * Prefer targeted homepage / league helpers for UI feeds.
  */
 export async function fetchAllMatchGroupsFromUnifiedFeed(
   client: OddMakiClient,
@@ -87,83 +87,20 @@ export async function fetchAllMatchGroupsFromUnifiedFeed(
   return Array.from(byId.values());
 }
 
-/** Max unified-feed pages for homepage — scan enough for a multi-league mix. */
-const HOMEPAGE_MAX_PAGES = 12;
-
 /**
- * Homepage: paginate until we have enough live-league matches spanning
- * multiple leagues (or hit the page cap). Uses created-sort for freshness
- * but callers must diversify so one bulk import can't own the grid.
+ * Shallow scan for one league — stops as soon as we have enough matches.
  */
-export async function fetchHomepageMatchGroupsFromUnifiedFeed(
-  client: OddMakiClient,
-  venueId: bigint,
-  targetCount: number,
-): Promise<FormattedMarketGroup[]> {
-  const byId = new Map<string, FormattedMarketGroup>();
-  let skip = 0;
-
-  for (let page = 0; page < HOMEPAGE_MAX_PAGES; page += 1) {
-    const feedData = await client.public.getUnifiedMarketFeed({
-      venueId,
-      first: FEED_PAGE_SIZE,
-      skip,
-      sortBy: "created",
-    });
-
-    const batch = feedData?.marketGroups ?? [];
-
-    for (const raw of batch) {
-      const tags = (raw.tags as string[] | undefined) ?? [];
-
-      if (isOutrightGroup(tags)) continue;
-
-      const formatted = formatRawMatchGroup(client, raw);
-
-      byId.set(formatted.groupId, formatted);
-    }
-
-    const live = filterMatchGroupsForFeed(Array.from(byId.values()), {
-      statusFilter: "Active",
-      liveLeaguesOnly: true,
-    });
-
-    const leagueSlugs = new Set(
-      live
-        .map((group) => {
-          const tag = group.tags?.find((entry) => entry.startsWith("league-"));
-
-          return tag ?? null;
-        })
-        .filter(Boolean),
-    );
-
-    if (live.length >= targetCount && leagueSlugs.size >= 4) break;
-    if (batch.length < FEED_PAGE_SIZE) break;
-
-    skip += FEED_PAGE_SIZE;
-  }
-
-  return Array.from(byId.values());
-}
-
-/**
- * League category pages: scan the unified feed (created-sorted) and stop paginating
- * once the earliest two kickoff rounds for the league are filled.
- */
-export async function fetchLeagueMatchGroupsFromUnifiedFeed(
+async function fetchLeagueMatchGroupsShallow(
   client: OddMakiClient,
   venueId: bigint,
   leagueSlug: string,
   statusFilter: StatusFilter,
-  maxRounds = 2,
+  options: { maxPages: number; maxGroups: number },
 ): Promise<FormattedMarketGroup[]> {
   const byId = new Map<string, FormattedMarketGroup>();
   let skip = 0;
-  let prevCappedCount = -1;
-  let stablePages = 0;
 
-  while (skip < LEAGUE_FETCH_MAX_SKIP) {
+  for (let page = 0; page < options.maxPages; page += 1) {
     const feedData = await client.public.getUnifiedMarketFeed({
       venueId,
       first: FEED_PAGE_SIZE,
@@ -172,17 +109,6 @@ export async function fetchLeagueMatchGroupsFromUnifiedFeed(
     });
 
     const batch = feedData?.marketGroups ?? [];
-    let addedEarlierKickoff = false;
-
-    const cappedMinBefore = minKickoffInGroups(
-      limitMatchGroupsToUpcomingRounds(
-        filterMatchGroupsForFeed(Array.from(byId.values()), {
-          statusFilter,
-          leagueSlug,
-        }),
-        maxRounds,
-      ),
-    );
 
     for (const raw of batch) {
       const tags = (raw.tags as string[] | undefined) ?? [];
@@ -191,47 +117,103 @@ export async function fetchLeagueMatchGroupsFromUnifiedFeed(
       if (!groupMatchesLeagueSlug(tags, leagueSlug)) continue;
 
       const formatted = formatRawMatchGroup(client, raw);
-      const kickoff = kickoffUnixFromTags(tags);
-      const isNew = !byId.has(formatted.groupId);
 
       byId.set(formatted.groupId, formatted);
-
-      if (
-        isNew &&
-        kickoff != null &&
-        (cappedMinBefore == null || kickoff < cappedMinBefore)
-      ) {
-        addedEarlierKickoff = true;
-      }
     }
 
     const filtered = filterMatchGroupsForFeed(Array.from(byId.values()), {
       statusFilter,
       leagueSlug,
     });
-    const capped = limitMatchGroupsToUpcomingRounds(filtered, maxRounds);
 
-    if (addedEarlierKickoff) {
-      stablePages = 0;
-      prevCappedCount = capped.length;
-    } else if (capped.length === prevCappedCount && batch.length > 0) {
-      stablePages += 1;
+    if (filtered.length >= options.maxGroups) {
+      return filtered.slice(0, options.maxGroups);
+    }
 
-      const pagesScanned = skip / FEED_PAGE_SIZE + 1;
-      const deepEnough = pagesScanned >= LEAGUE_MIN_PAGES_BEFORE_STOP;
+    if (batch.length < FEED_PAGE_SIZE) break;
 
-      // Require a real slate before stopping — 2 empty-adjacent pages after one
-      // hit used to strand league views when newer imports flooded the feed.
-      if (
-        deepEnough &&
-        stablePages >= 3 &&
-        capped.length >= 4
-      ) {
-        break;
-      }
-    } else {
-      stablePages = 0;
-      prevCappedCount = capped.length;
+    skip += FEED_PAGE_SIZE;
+  }
+
+  return filterMatchGroupsForFeed(Array.from(byId.values()), {
+    statusFilter,
+    leagueSlug,
+  }).slice(0, options.maxGroups);
+}
+
+/**
+ * Homepage: pull a few upcoming matches from each big league in parallel
+ * so Saudi/Austria imports can't own the grid.
+ */
+export async function fetchHomepageMatchGroupsFromUnifiedFeed(
+  client: OddMakiClient,
+  venueId: bigint,
+  _targetCount: number,
+): Promise<FormattedMarketGroup[]> {
+  const slugs = HOMEPAGE_PRIORITY_LEAGUES.slice(0, 8);
+
+  const batches = await Promise.all(
+    slugs.map((slug) =>
+      fetchLeagueMatchGroupsShallow(client, venueId, slug, "Active", {
+        maxPages: 14,
+        maxGroups: 4,
+      }),
+    ),
+  );
+
+  const byId = new Map<string, FormattedMarketGroup>();
+
+  for (const batch of batches) {
+    for (const group of batch) {
+      byId.set(group.groupId, group);
+    }
+  }
+
+  return Array.from(byId.values());
+}
+
+/**
+ * League category pages: one server-side scan, stop when slate is full.
+ * Avoids client infinite-paging flicker.
+ */
+export async function fetchLeagueMatchGroupsFromUnifiedFeed(
+  client: OddMakiClient,
+  venueId: bigint,
+  leagueSlug: string,
+  statusFilter: StatusFilter,
+  maxRounds = 3,
+): Promise<FormattedMarketGroup[]> {
+  const byId = new Map<string, FormattedMarketGroup>();
+  let skip = 0;
+
+  for (let page = 0; page < LEAGUE_MAX_PAGES; page += 1) {
+    const feedData = await client.public.getUnifiedMarketFeed({
+      venueId,
+      first: FEED_PAGE_SIZE,
+      skip,
+      sortBy: "created",
+    });
+
+    const batch = feedData?.marketGroups ?? [];
+
+    for (const raw of batch) {
+      const tags = (raw.tags as string[] | undefined) ?? [];
+
+      if (isOutrightGroup(tags)) continue;
+      if (!groupMatchesLeagueSlug(tags, leagueSlug)) continue;
+
+      const formatted = formatRawMatchGroup(client, raw);
+
+      byId.set(formatted.groupId, formatted);
+    }
+
+    const filtered = filterMatchGroupsForFeed(Array.from(byId.values()), {
+      statusFilter,
+      leagueSlug,
+    });
+
+    if (filtered.length >= LEAGUE_TARGET_GROUPS) {
+      return limitMatchGroupsToUpcomingRounds(filtered, maxRounds);
     }
 
     if (batch.length < FEED_PAGE_SIZE) break;
@@ -245,18 +227,4 @@ export async function fetchLeagueMatchGroupsFromUnifiedFeed(
   });
 
   return limitMatchGroupsToUpcomingRounds(filtered, maxRounds);
-}
-
-function minKickoffInGroups(groups: FormattedMarketGroup[]): number | null {
-  let min: number | null = null;
-
-  for (const group of groups) {
-    const kickoff = kickoffUnixFromTags(group.tags);
-
-    if (kickoff == null) continue;
-
-    min = min == null ? kickoff : Math.min(min, kickoff);
-  }
-
-  return min;
 }

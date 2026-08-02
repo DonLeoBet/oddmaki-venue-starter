@@ -19,8 +19,8 @@ import {
 import { isPublicOutrightGroup } from "@/config/outrights.config";
 
 const PAGE_SIZE = 100;
-/** Cap outright scan — homepage/sidebar only need public Active outrights. */
-const MAX_PAGES = 5;
+/** Scan enough pages to find public Active outrights across the venue. */
+const MAX_PAGES = 12;
 
 async function fetchOutrightMarketGroups(
   client: OddMakiClient,

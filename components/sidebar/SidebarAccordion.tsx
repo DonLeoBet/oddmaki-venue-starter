@@ -36,10 +36,10 @@ export function SidebarAccordion({
     level === 0 ? "px-3" : level === 1 ? "pl-6 pr-2" : "pl-9 pr-2";
   const labelClass =
     level === 0
-      ? "text-sm font-semibold text-white/90"
+      ? "text-[15px] font-semibold text-white/90 [[data-brand=wiseguy]_&]:text-base"
       : level === 1
-        ? "text-[13px] font-semibold text-white/80"
-        : "text-[13px] font-medium text-default-300";
+        ? "text-[13px] font-semibold text-white/80 [[data-brand=wiseguy]_&]:text-[15px]"
+        : "text-[13px] font-medium text-default-300 [[data-brand=wiseguy]_&]:text-sm";
   const indentClass =
     level === 0 ? "pl-2" : level === 1 ? "pl-4" : "pl-5";
 
@@ -90,7 +90,11 @@ export function SidebarLink({
   onNavigate,
 }: SidebarLinkProps) {
   const paddingClass =
-    depth === 2 ? "pl-12 pr-3 text-[12px]" : sub ? "pl-8 pr-3 text-[13px]" : "px-3 text-sm";
+    depth === 2
+      ? "pl-12 pr-3 text-[12px] [[data-brand=wiseguy]_&]:text-[13px]"
+      : sub
+        ? "pl-8 pr-3 text-[13px] [[data-brand=wiseguy]_&]:text-[15px]"
+        : "px-3 text-sm [[data-brand=wiseguy]_&]:text-[15px]";
 
   return (
     <NextLink

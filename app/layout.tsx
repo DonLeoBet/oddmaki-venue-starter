@@ -56,10 +56,10 @@ export async function generateMetadata(): Promise<Metadata> {
     : {}),
     icons: {
       icon: [
-        { url: venueConfig.branding.favicon, type: "image/png" },
-        { url: "/favicon.ico", sizes: "32x32" },
+        { url: `${venueConfig.branding.favicon}?v=3`, type: "image/png" },
+        { url: "/favicon.ico?v=3", sizes: "32x32" },
       ],
-      apple: "/apple-touch-icon.png",
+      apple: "/apple-touch-icon.png?v=3",
     },
   };
 }
@@ -77,7 +77,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html suppressHydrationWarning lang="en" className="overflow-x-hidden">
+    <html
+      suppressHydrationWarning
+      lang="en"
+      className="overflow-x-hidden"
+      data-brand={
+        BRAND_CONFIG.domain.includes("wiseguy") ? "wiseguy" : BRAND_CONFIG.id
+      }
+    >
       <head />
       <body
         className={clsx(

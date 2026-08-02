@@ -21,8 +21,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
       <div className="flex min-h-0 w-full flex-1 flex-col overflow-x-hidden lg:flex-row">
       {/* Flush-left sidebar — tone shift only, no hard divider */}
-      <aside className="hidden lg:flex lg:w-[240px] xl:w-[260px] lg:shrink-0 lg:flex-col lg:bg-background/95">
-        <div className="sticky top-16 max-h-[calc(100vh-4rem)] overflow-y-auto overflow-x-hidden px-1 py-3 [scrollbar-width:thin]">
+      <aside className="hidden lg:flex lg:w-[240px] xl:w-[260px] lg:shrink-0 lg:flex-col lg:bg-background/95 [[data-brand=wiseguy]_&]:lg:w-[280px] [[data-brand=wiseguy]_&]:xl:w-[300px]">
+        <div className="sticky top-16 max-h-[calc(100vh-4rem)] overflow-y-auto overflow-x-hidden px-1 py-3 [scrollbar-width:thin] [[data-brand=wiseguy]_&]:top-20">
           <Suspense>
             <SidebarNav />
           </Suspense>
@@ -31,7 +31,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <div className="flex min-w-0 flex-1 flex-col bg-background">
         <CategoryNav />
-        <main className="flex w-full min-w-0 flex-grow flex-col px-3 py-2 pb-20 sm:px-4 xl:px-6 lg:pb-2">
+        <main className="flex w-full min-w-0 flex-grow flex-col px-3 py-2 pb-20 sm:px-4 xl:px-6 lg:pb-2 [[data-brand=wiseguy]_&]:sm:px-5 [[data-brand=wiseguy]_&]:xl:px-8">
           {children}
         </main>
       </div>

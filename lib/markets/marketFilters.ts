@@ -1,4 +1,5 @@
 import {
+  LEAGUE_BY_ID,
   LEAGUE_BY_SLUG,
   leagueSlugTag,
   parseLeagueSlugFromTags,
@@ -210,7 +211,19 @@ export function groupMatchesLeagueSlug(
   // Markets imported before a league was registered use league-{id} slugs.
   const legacySlug = `league-${league.id}`;
 
-  return parsed === legacySlug || tags.includes(leagueSlugTag(legacySlug));
+  if (parsed === legacySlug || tags.includes(leagueSlugTag(legacySlug))) {
+    return true;
+  }
+
+  // Outrights often only carry outright-{id}-{season} + display name tags.
+  const outrightTag = tags.find((tag) => tag.startsWith("outright-"));
+  const outright = outrightTag ? parseOutrightTag(outrightTag) : null;
+
+  if (outright && LEAGUE_BY_ID[outright.leagueId]?.slug === leagueSlug) {
+    return true;
+  }
+
+  return false;
 }
 
 /** Keep only canonical sub-markets for UI lists. */

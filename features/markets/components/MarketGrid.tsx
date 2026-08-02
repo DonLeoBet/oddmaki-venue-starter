@@ -9,6 +9,7 @@ import NextLink from "next/link";
 import { Button } from "@heroui/button";
 
 import { useUnifiedFeed } from "../hooks/useUnifiedFeed";
+import { useLeagueMatchGroups } from "../hooks/useLeagueMatchGroups";
 import { useHomepageMatchGroups } from "../hooks/useHomepageMatchGroups";
 import { useOutrightGroups } from "../hooks/useOutrightGroups";
 import { useFilterToggle } from "../hooks/useFilterToggle";
@@ -43,7 +44,7 @@ import { HOMEPAGE_PRIORITY_LEAGUES } from "@/lib/markets/diversifyMatchGroups";
 import { useBrand } from "@/features/brand";
 
 /** Initial match cards on a league page before "See more". */
-const LEAGUE_MATCH_PREVIEW = 6;
+const LEAGUE_MATCH_PREVIEW = 12;
 
 function isOutrightFeedItem(item: UnifiedFeedItem): boolean {
   return item.type === "group" && isOutrightGroup(item.data.tags);
@@ -100,10 +101,17 @@ export function MarketGrid() {
     setLeagueExpanded(false);
   }, [leagueCategorySlug]);
 
-  // Progressive unified feed for league pages — the dedicated deep scan
-  // hung for minutes when a bulk import flooded "created" sort.
+  // Non-league category browsing (crypto etc.) — not used for football leagues.
   const useUnifiedFeedEnabled =
-    !isHomepage && selectedCategory !== "outrights";
+    !isHomepage &&
+    !leagueCategorySlug &&
+    selectedCategory !== "outrights";
+
+  const {
+    groups: leagueGroups,
+    isLoading: leagueGroupsLoading,
+    error: leagueGroupsError,
+  } = useLeagueMatchGroups(leagueCategorySlug, statusFilter);
 
   const {
     data,
@@ -184,34 +192,14 @@ export function MarketGrid() {
     [homepageGroups],
   );
 
-  const leagueMatchItems = useMemo(
-    () =>
-      filteredItems.filter(
-        (item) => item.type !== "group" || !isOutrightGroup(item.data.tags),
-      ),
-    [filteredItems],
+  const leagueFeedItems = useMemo(
+    (): UnifiedFeedItem[] =>
+      leagueGroups.map((group) => ({
+        type: "group" as const,
+        data: group,
+      })),
+    [leagueGroups],
   );
-
-  // Fetch just enough for the preview slate (or more once expanded).
-  useEffect(() => {
-    if (!leagueCategorySlug || !useUnifiedFeedEnabled) return;
-    if (!hasNextPage || isFetchingNextPage || isLoading) return;
-
-    const target = leagueExpanded ? 24 : LEAGUE_MATCH_PREVIEW;
-
-    if (leagueMatchItems.length >= target) return;
-
-    fetchNextPage();
-  }, [
-    leagueCategorySlug,
-    useUnifiedFeedEnabled,
-    hasNextPage,
-    isFetchingNextPage,
-    isLoading,
-    leagueMatchItems.length,
-    leagueExpanded,
-    fetchNextPage,
-  ]);
 
   const { mainGridItems, outrightSectionItems, outrightSectionTitle, outrightViewAllHref } =
     useMemo(() => {
@@ -221,9 +209,10 @@ export function MarketGrid() {
     }));
 
     const filterOutrightsForLeague = (slug: string) =>
-      outrightFeedItems.filter((item) =>
-        item.type === "group" &&
-        groupMatchesLeagueSlug(item.data.tags ?? [], slug),
+      outrightFeedItems.filter(
+        (item) =>
+          item.type === "group" &&
+          groupMatchesLeagueSlug(item.data.tags ?? [], slug),
       );
 
     const priorityOutrights = outrightFeedItems
@@ -261,23 +250,20 @@ export function MarketGrid() {
       };
     }
 
-    if (selectedCategory && selectedCategory !== "outrights") {
-      const hasLeagueFilter = Boolean(LEAGUE_BY_SLUG[selectedCategory]);
+    if (leagueCategorySlug) {
+      const leagueOutrights = filterOutrightsForLeague(leagueCategorySlug);
+      const matches =
+        leagueExpanded ?
+          leagueFeedItems
+        : leagueFeedItems.slice(0, LEAGUE_MATCH_PREVIEW);
 
-      if (hasLeagueFilter) {
-        const leagueOutrights = filterOutrightsForLeague(selectedCategory);
-        const matches =
-          leagueExpanded ?
-            leagueMatchItems
-          : leagueMatchItems.slice(0, LEAGUE_MATCH_PREVIEW);
-
-        return {
-          mainGridItems: matches,
-          outrightSectionItems: leagueOutrights.slice(0, 1),
-          outrightSectionTitle: "Long-term odds",
-          outrightViewAllHref: `/?category=outrights&league=${selectedCategory}`,
-        };
-      }
+      return {
+        mainGridItems: matches,
+        // Always surface the league winner market in the first row when present.
+        outrightSectionItems: leagueOutrights.slice(0, 2),
+        outrightSectionTitle: "Long-term odds",
+        outrightViewAllHref: `/?category=outrights&league=${leagueCategorySlug}`,
+      };
     }
 
     if (isHomepage) {
@@ -304,7 +290,7 @@ export function MarketGrid() {
     filteredItems,
     selectedCategory,
     leagueCategorySlug,
-    leagueMatchItems,
+    leagueFeedItems,
     leagueExpanded,
     homepageFeedItems,
     isHomepage,
@@ -325,8 +311,8 @@ export function MarketGrid() {
   );
   const { data: seriesWindows } = useSeriesCurrentWindows(seriesIds);
 
-  if (error || homepageError) {
-    const feedError = homepageError ?? error;
+  if (error || homepageError || leagueGroupsError) {
+    const feedError = leagueGroupsError ?? homepageError ?? error;
 
     // eslint-disable-next-line no-console
     console.error("[MarketGrid] feed error:", feedError);
@@ -343,14 +329,19 @@ export function MarketGrid() {
     );
   }
 
+  // Only block the whole grid on the first load — never flash empty skeletons
+  // over existing cards (that caused the hang/flicker while paging).
   const feedLoading =
-    (isHomepage && homepageLoading) ||
-    (useUnifiedFeedEnabled && isLoading);
+    (isHomepage && homepageLoading && homepageFeedItems.length === 0) ||
+    (Boolean(leagueCategorySlug) &&
+      leagueGroupsLoading &&
+      leagueFeedItems.length === 0) ||
+    (useUnifiedFeedEnabled && isLoading && filteredItems.length === 0);
 
   if (feedLoading) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4">
-        {Array.from({ length: 16 }).map((_, i) => (
+        {Array.from({ length: 12 }).map((_, i) => (
           <MarketSkeleton key={`m-${i}`} />
         ))}
       </div>
@@ -367,6 +358,7 @@ export function MarketGrid() {
 
   if (
     !isHomepage &&
+    !leagueCategorySlug &&
     items.length === 0 &&
     !isLoading &&
     outrightGroups.length === 0 &&
@@ -376,9 +368,7 @@ export function MarketGrid() {
   }
 
   const showOutrightSection =
-    !outrightsLoading &&
-    outrightSectionItems.length > 0 &&
-    selectedCategory !== "outrights";
+    outrightSectionItems.length > 0 && selectedCategory !== "outrights";
 
   const outrightOnTop = Boolean(
     (leagueCategorySlug || isHomepage) && showOutrightSection,
@@ -390,16 +380,14 @@ export function MarketGrid() {
   const canShowMoreLeagueMatches =
     Boolean(leagueCategorySlug) &&
     !leagueExpanded &&
-    (leagueMatchItems.length > LEAGUE_MATCH_PREVIEW || hasNextPage);
+    leagueFeedItems.length > LEAGUE_MATCH_PREVIEW;
 
   const gridEmpty =
     isHomepage ?
       mainGridItems.length === 0 && !homepageLoading
     : leagueCategorySlug ?
       mainGridItems.length === 0 &&
-      !isLoading &&
-      !isFetchingNextPage &&
-      !hasNextPage &&
+      !leagueGroupsLoading &&
       outrightSectionItems.length === 0
     : filteredItems.length === 0 && !hasNextPage;
 

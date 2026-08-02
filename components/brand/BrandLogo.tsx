@@ -25,10 +25,14 @@ export function BrandLogo({
   const { logo, name } = venueConfig.branding;
   const { width: intrinsicWidth, height: intrinsicHeight } =
     getBrandLogoIntrinsicSize(BRAND_CONFIG.id, logo);
-  const width = Math.round(height * (intrinsicWidth / intrinsicHeight));
+  const isWiseguy = logo === "/wiseguy-logo.png";
+  const resolvedHeight = isWiseguy ? Math.max(height, 40) : height;
+  const width = Math.round(
+    resolvedHeight * (intrinsicWidth / intrinsicHeight),
+  );
   const maxWidth =
-    logo === "/wiseguy-logo.png" ?
-      Math.round(200 * (intrinsicWidth / 834))
+    isWiseguy ?
+      Math.round(320 * (intrinsicWidth / 834))
     : Math.round(220 * (intrinsicWidth / 256));
 
   const image = (
@@ -38,10 +42,10 @@ export function BrandLogo({
         className ??
         "w-auto shrink-0 object-contain object-left"
       }
-      height={height}
+      height={resolvedHeight}
       priority={priority}
       src={logo}
-      style={{ height, maxWidth }}
+      style={{ height: resolvedHeight, maxWidth }}
       width={width}
     />
   );
