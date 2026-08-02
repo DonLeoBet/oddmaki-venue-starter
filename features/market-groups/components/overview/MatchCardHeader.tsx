@@ -13,8 +13,8 @@ interface MatchCardHeaderProps {
 
 function TeamRow({ name, logo }: { name: string; logo?: string | null }) {
   return (
-    <div className="flex min-w-0 items-center gap-2.5">
-      <TeamLogo plain className="shrink-0" name={name} size="md" src={logo} />
+    <div className="flex min-w-0 items-center gap-2">
+      <TeamLogo plain className="shrink-0" name={name} size="sm" src={logo} />
       <span className="truncate text-sm font-semibold leading-tight">{name}</span>
     </div>
   );
@@ -29,14 +29,14 @@ export function MatchCardHeader({ group }: MatchCardHeaderProps) {
   const kickoff = formatKickoffFromGroup(group.tags ?? [], group.marketQuestion);
 
   return (
-    <div className="flex w-full min-w-0 items-start justify-between gap-3">
-      <div className="flex min-w-0 flex-col gap-2">
+    <div className="flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+      <div className="flex min-w-0 flex-col gap-1.5">
         <TeamRow logo={teams?.home.logo} name={homeName} />
         <TeamRow logo={teams?.away.logo} name={awayName} />
       </div>
       {kickoff ?
         <time
-          className="max-w-[44%] shrink-0 text-right text-[11px] leading-tight text-default-400"
+          className="w-full shrink-0 text-[11px] leading-tight text-default-400 sm:max-w-[44%] sm:text-right"
           dateTime={kickoff}
         >
           {kickoff}

@@ -52,8 +52,10 @@ export function OneXTwoMarketSection({
   const volumeLabel = sumSectionVolume([homeMarket, drawMarket, awayMarket]);
 
   return (
-    <div className="px-4 py-4">
-      <h3 className="mb-3 text-sm font-semibold text-foreground">{title}</h3>
+    <div className="px-3 py-3 sm:px-4 sm:py-4">
+      <h3 className="mb-3 text-sm font-semibold text-foreground leading-snug break-words">
+        {title}
+      </h3>
       <div className="flex flex-col divide-y divide-default-100/50 rounded-xl border border-default-100/60 overflow-hidden">
         {OUTCOME_ORDER.map((key) => {
           const market = byKey[key]!;
@@ -73,7 +75,7 @@ export function OneXTwoMarketSection({
           return (
             <button
               key={market.marketId}
-              className={`flex w-full items-center justify-between gap-4 px-4 py-3.5 text-left transition-all ${
+              className={`flex w-full items-center justify-between gap-2 px-3 py-3 text-left transition-all sm:gap-4 sm:px-4 sm:py-3.5 ${
                 isSelected ?
                   "bg-cyan-400/10 border-l-2 border-l-cyan-400"
                 : "hover:bg-default-100/40"
@@ -81,20 +83,25 @@ export function OneXTwoMarketSection({
               type="button"
               onClick={() => onSelectMarket(market.marketId, 0)}
             >
-              <span className="flex min-w-0 flex-1 items-center gap-3">
+              <span className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
                 {isDraw ?
-                  <DrawOutcomeIcon className="shrink-0" size="row" />
+                  <DrawOutcomeIcon className="shrink-0" size="sm" />
                 : logo ?
-                  <TeamLogo className="shrink-0" name={label} size="row" src={logo} />
+                  <TeamLogo
+                    className="shrink-0"
+                    name={label}
+                    size="sm"
+                    src={logo}
+                  />
                 : null}
                 <span
-                  className={`text-sm ${isSelected ? "font-semibold text-cyan-300" : "font-medium"}`}
+                  className={`min-w-0 truncate text-sm ${isSelected ? "font-semibold text-cyan-300" : "font-medium"}`}
                 >
                   {label}
                 </span>
               </span>
               <span
-                className="text-lg font-bold tabular-nums shrink-0"
+                className="text-base font-bold tabular-nums shrink-0 sm:text-lg"
                 style={{ color: isSelected ? accent : undefined }}
               >
                 {pct}%

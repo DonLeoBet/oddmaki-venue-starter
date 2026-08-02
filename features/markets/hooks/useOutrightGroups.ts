@@ -19,7 +19,8 @@ import {
 import { isPublicOutrightGroup } from "@/config/outrights.config";
 
 const PAGE_SIZE = 100;
-const MAX_GROUPS = 1000;
+/** Cap outright scan — homepage/sidebar only need public Active outrights. */
+const MAX_PAGES = 5;
 
 async function fetchOutrightMarketGroups(
   client: OddMakiClient,
@@ -27,7 +28,8 @@ async function fetchOutrightMarketGroups(
 ): Promise<FormattedMarketGroup[]> {
   const groups: FormattedMarketGroup[] = [];
 
-  for (let skip = 0; skip < MAX_GROUPS; skip += PAGE_SIZE) {
+  for (let page = 0; page < MAX_PAGES; page += 1) {
+    const skip = page * PAGE_SIZE;
     const result = (await client.public.getMarketGroups({
       venueId,
       first: PAGE_SIZE,

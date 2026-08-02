@@ -21,12 +21,12 @@ export function OutrightGroupCard({ group }: OutrightGroupCardProps) {
   return (
     <NextLink className="block" href={`/market/multi/${group.groupId}`}>
       <Card
-        className="w-full min-h-[180px] hover:scale-[1.02] transition-transform cursor-pointer border border-default-100/50"
+        className="w-full min-h-0 sm:min-h-[160px] hover:scale-[1.02] transition-transform cursor-pointer border border-default-100/50 active:scale-[0.99]"
         style={{
           background: `linear-gradient(145deg, ${alpha(colors.neonCyan, 0.06)} 0%, transparent 55%)`,
         }}
       >
-        <CardBody className="flex flex-col items-center justify-center gap-3 px-4 py-6 text-center">
+        <CardBody className="flex flex-col items-center justify-center gap-2 px-3 py-4 text-center sm:gap-3 sm:px-4 sm:py-6">
           <LeagueLogo
             plain
             name={meta.leagueName}

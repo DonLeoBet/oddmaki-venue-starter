@@ -176,11 +176,11 @@ export function MarketOrderForm({
       </div>
 
       {/* Quick-add chips */}
-      <div className="flex gap-1 rounded-lg p-1.5">
+      <div className="grid grid-cols-3 gap-1 rounded-lg p-1.5 sm:flex sm:gap-1">
         {AMOUNT_DELTAS.map((d) => (
           <Button
             key={d}
-            className="min-w-0 h-6 px-2 bg-default-100 text-xs flex-1"
+            className="min-w-0 h-7 px-2 bg-default-100 text-xs sm:h-6 sm:flex-1"
             size="sm"
             variant="flat"
             onPress={() => {
@@ -193,7 +193,7 @@ export function MarketOrderForm({
           </Button>
         ))}
         <Button
-          className="min-w-0 h-6 px-2 bg-default-100 text-xs flex-1"
+          className="min-w-0 h-7 px-2 bg-default-100 text-xs col-span-3 sm:col-span-1 sm:h-6 sm:flex-1"
           isDisabled={!isLoggedIn}
           size="sm"
           variant="flat"

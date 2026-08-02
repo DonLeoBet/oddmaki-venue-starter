@@ -154,8 +154,7 @@ export const queryKeys = {
 
   homepageMatchGroups: {
     all: ["homepageMatchGroups"] as const,
-    list: (venueId?: string, status?: string) =>
-      ["homepageMatchGroups", venueId, status] as const,
+    list: (venueId?: string) => ["homepageMatchGroups", venueId] as const,
   },
 
   accessControl: {

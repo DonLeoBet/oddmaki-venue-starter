@@ -45,9 +45,9 @@ function formatRawMatchGroup(
 }
 
 /**
- * Paginate the unified feed (volume-sorted) and collect all non-outright match groups.
- * Category pages must use the same source as the homepage — plain getMarketGroups
- * pagination caps at 1000 and misses high-volume leagues like PL / Serie A.
+ * Paginate the unified feed and collect non-outright match groups.
+ * Prefer {@link fetchHomepageMatchGroupsFromUnifiedFeed} for the homepage —
+ * draining every page makes first paint very slow.
  */
 export async function fetchAllMatchGroupsFromUnifiedFeed(
   client: OddMakiClient,
@@ -77,6 +77,55 @@ export async function fetchAllMatchGroupsFromUnifiedFeed(
       byId.set(formatted.groupId, formatted);
     }
 
+    if (batch.length < FEED_PAGE_SIZE) break;
+
+    skip += FEED_PAGE_SIZE;
+  }
+
+  return Array.from(byId.values());
+}
+
+/** Max unified-feed pages for homepage (~200 groups) — enough for 24 live cards. */
+const HOMEPAGE_MAX_PAGES = 4;
+
+/**
+ * Homepage: stop after a few pages once enough live-league Active matches exist.
+ * Avoids scanning the entire venue feed before painting ~24 cards.
+ */
+export async function fetchHomepageMatchGroupsFromUnifiedFeed(
+  client: OddMakiClient,
+  venueId: bigint,
+  targetCount: number,
+): Promise<FormattedMarketGroup[]> {
+  const byId = new Map<string, FormattedMarketGroup>();
+  let skip = 0;
+
+  for (let page = 0; page < HOMEPAGE_MAX_PAGES; page += 1) {
+    const feedData = await client.public.getUnifiedMarketFeed({
+      venueId,
+      first: FEED_PAGE_SIZE,
+      skip,
+      sortBy: "created",
+    });
+
+    const batch = feedData?.marketGroups ?? [];
+
+    for (const raw of batch) {
+      const tags = (raw.tags as string[] | undefined) ?? [];
+
+      if (isOutrightGroup(tags)) continue;
+
+      const formatted = formatRawMatchGroup(client, raw);
+
+      byId.set(formatted.groupId, formatted);
+    }
+
+    const live = filterMatchGroupsForFeed(Array.from(byId.values()), {
+      statusFilter: "Active",
+      liveLeaguesOnly: true,
+    });
+
+    if (live.length >= targetCount) break;
     if (batch.length < FEED_PAGE_SIZE) break;
 
     skip += FEED_PAGE_SIZE;

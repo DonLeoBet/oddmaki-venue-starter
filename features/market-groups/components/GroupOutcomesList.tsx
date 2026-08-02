@@ -64,21 +64,26 @@ function MarketRow({
 
   return (
     <div
-      className={`w-full px-4 py-3.5 flex items-center justify-between gap-4 transition-all ${
+      className={`w-full px-3 py-3 flex flex-col gap-2 transition-all sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-4 sm:py-3.5 ${
         isSelected
           ? "relative z-10 my-0.5 rounded-lg border-2 border-cyan-400 bg-cyan-400/15 shadow-[0_0_16px_rgba(34,211,238,0.2)]"
           : "border-b border-default-100/50 last:border-b-0 hover:bg-default-100/40"
       }`}
     >
       <button
-        className="flex flex-1 min-w-0 items-center gap-3.5 text-left"
+        className="flex flex-1 min-w-0 items-center gap-2.5 text-left sm:gap-3.5"
         type="button"
         onClick={onSelect}
       >
         {isDraw ?
-          <DrawOutcomeIcon className="shrink-0" size="row" />
+          <DrawOutcomeIcon className="shrink-0" size="sm" />
         : teamLogo ?
-          <TeamLogo className="shrink-0" name={displayName} size="row" src={teamLogo} />
+          <TeamLogo
+            className="shrink-0"
+            name={displayName}
+            size="sm"
+            src={teamLogo}
+          />
         : null}
         <div className="flex flex-col gap-0.5 min-w-0">
           <span
@@ -94,9 +99,9 @@ function MarketRow({
         </div>
       </button>
 
-      <div className="flex items-center gap-3 flex-shrink-0">
+      <div className="flex items-center justify-between gap-2 pl-8 sm:justify-end sm:gap-3 sm:pl-0 flex-shrink-0">
         <span
-          className={`text-lg font-bold ${
+          className={`text-base font-bold sm:text-lg ${
             pct >= 50 ? "text-primary" : "text-default-500"
           }`}
         >
@@ -104,14 +109,14 @@ function MarketRow({
         </span>
         <div className="flex gap-1">
           <button
-            className="text-xs rounded bg-primary/10 text-primary px-2 py-1 font-medium hover:bg-primary/20 transition-colors"
+            className="text-xs rounded bg-primary/10 text-primary px-2 py-1.5 font-medium hover:bg-primary/20 transition-colors"
             type="button"
             onClick={() => onSelectOutcome(0)}
           >
             {yesLabel} {pct}c
           </button>
           <button
-            className="text-xs rounded bg-secondary/10 text-secondary px-2 py-1 font-medium hover:bg-secondary/20 transition-colors"
+            className="text-xs rounded bg-secondary/10 text-secondary px-2 py-1.5 font-medium hover:bg-secondary/20 transition-colors"
             type="button"
             onClick={() => onSelectOutcome(1)}
           >

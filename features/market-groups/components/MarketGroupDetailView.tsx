@@ -180,7 +180,7 @@ export function MarketGroupDetailView({ groupId }: MarketGroupDetailViewProps) {
     : null;
 
   return (
-    <section className="flex flex-col gap-6 pt-4 pb-8 md:pt-6 md:pb-10">
+    <section className="flex flex-col gap-4 pt-3 pb-8 sm:gap-6 md:pt-6 md:pb-10">
       <MarketGroupDetailHeader
         group={group}
         selectedMarketId={selectedMarketId}

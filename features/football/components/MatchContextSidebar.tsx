@@ -125,8 +125,8 @@ function StandingsTable({ context }: { context: MatchPageContext }) {
           )}
       </CardHeader>
       <CardBody className="pt-0 px-0 pb-2">
-        <div className="max-h-72 overflow-y-auto [scrollbar-width:thin]">
-          <table className="w-full text-xs">
+        <div className="max-h-72 overflow-x-auto overflow-y-auto [scrollbar-width:thin]">
+          <table className="w-full min-w-[280px] text-xs">
             <thead className="sticky top-0 bg-content1 text-default-400">
               <tr>
                 <th className="px-3 py-1 text-left font-medium">#</th>

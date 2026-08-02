@@ -216,12 +216,12 @@ export function MarketGroupCard({ group, focusMarketType }: MarketGroupCardProps
 
   return (
     <NextLink className="block" href={detailHref}>
-      <Card className="w-full min-h-[200px] border border-default-100/50 hover:scale-[1.02] transition-transform cursor-pointer">
-        <CardHeader className="flex flex-col items-start gap-2 pt-4 pb-0 flex-shrink-0">
+      <Card className="w-full min-h-0 border border-default-100/50 sm:min-h-[180px] hover:scale-[1.02] transition-transform cursor-pointer active:scale-[0.99]">
+        <CardHeader className="flex flex-col items-start gap-2 pt-3 pb-0 flex-shrink-0 sm:pt-4">
           <MatchCardHeader group={group} />
         </CardHeader>
 
-        <CardBody className="gap-0 py-2 overflow-y-auto flex-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <CardBody className="gap-0 py-2 flex-1 overflow-visible">
           {sections.length === 0 ?
             <p className="text-xs text-default-400 px-1 py-2">No markets yet</p>
           : <div className="flex flex-col divide-y divide-default-100/80">

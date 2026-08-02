@@ -264,9 +264,9 @@ export function UnifiedTradingPanel({
           </div>
 
           {/* Row 2: Outcome selector */}
-          <div className="flex gap-1 w-full">
+          <div className="flex gap-1 w-full min-w-0">
             <Button
-              className="flex-1 font-semibold"
+              className="flex-1 min-w-0 font-semibold !whitespace-normal h-auto py-2"
               color="default"
               size="sm"
               style={
@@ -277,11 +277,17 @@ export function UnifiedTradingPanel({
               variant="flat"
               onPress={() => setOutcomeIndex(0)}
             >
-              {outcomes[0] || "Yes"}
-              {displayCents0 != null ? ` ${displayCents0}¢` : ""}
+              <span className="flex w-full min-w-0 flex-col items-center gap-0.5 leading-tight">
+                <span className="truncate max-w-full text-xs sm:text-sm">
+                  {outcomes[0] || "Yes"}
+                </span>
+                {displayCents0 != null ?
+                  <span className="tabular-nums">{displayCents0}¢</span>
+                : null}
+              </span>
             </Button>
             <Button
-              className="flex-1 font-semibold"
+              className="flex-1 min-w-0 font-semibold !whitespace-normal h-auto py-2"
               color="default"
               size="sm"
               style={
@@ -292,8 +298,14 @@ export function UnifiedTradingPanel({
               variant="flat"
               onPress={() => setOutcomeIndex(1)}
             >
-              {outcomes[1] || "No"}
-              {displayCents1 != null ? ` ${displayCents1}¢` : ""}
+              <span className="flex w-full min-w-0 flex-col items-center gap-0.5 leading-tight">
+                <span className="truncate max-w-full text-xs sm:text-sm">
+                  {outcomes[1] || "No"}
+                </span>
+                {displayCents1 != null ?
+                  <span className="tabular-nums">{displayCents1}¢</span>
+                : null}
+              </span>
             </Button>
           </div>
         </CardHeader>

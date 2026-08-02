@@ -101,7 +101,7 @@ export function MarketGrid() {
     groups: homepageGroups,
     isLoading: homepageLoading,
     error: homepageError,
-  } = useHomepageMatchGroups(statusFilter);
+  } = useHomepageMatchGroups(statusFilter, isHomepage);
 
   const {
     data,
@@ -306,7 +306,7 @@ export function MarketGrid() {
 
   if (feedLoading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4">
         {Array.from({ length: 16 }).map((_, i) => (
           <MarketSkeleton key={`m-${i}`} />
         ))}
@@ -359,7 +359,7 @@ export function MarketGrid() {
           View all
         </NextLink>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4">
         {outrightSectionItems.map((item) =>
           item.type === "group" ?
             <OutrightGroupCard
@@ -389,7 +389,7 @@ export function MarketGrid() {
         <>
           {outrightOnTop && outrightSection}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4">
             {mainGridItems.map((item: UnifiedFeedItem) => {
               if (item.type === "series") {
                 return (

@@ -11,24 +11,30 @@ import type { UnifiedFeedItem } from "../types";
 import { useOddMakiClient } from "@/lib/oddmaki/hooks";
 import { getVenueId } from "@/config/venue.config";
 import { queryKeys } from "@/lib/oddmaki/queryKeys";
-import { fetchAllMatchGroupsFromUnifiedFeed } from "@/lib/markets/fetchMatchGroups";
+import { fetchHomepageMatchGroupsFromUnifiedFeed } from "@/lib/markets/fetchMatchGroups";
 import { filterMatchGroupsForFeed } from "@/lib/markets/filterMatchGroups";
 
 const HOMEPAGE_MAX = 24;
+/** Fetch a bit more than we show so featured picks still have room. */
+const HOMEPAGE_FETCH_TARGET = 40;
 
-/** Full feed fetch for homepage — avoids volume-sorted pagination flash. */
-export function useHomepageMatchGroups(statusFilter: StatusFilter) {
+/** Capped feed fetch for homepage — does not drain every market on the venue. */
+export function useHomepageMatchGroups(
+  statusFilter: StatusFilter,
+  enabled = true,
+) {
   const client = useOddMakiClient();
   const venueId = getVenueId();
 
   const { data, isLoading, error } = useQuery({
-    queryKey: queryKeys.homepageMatchGroups.list(
-      venueId?.toString(),
-      statusFilter,
-    ),
+    queryKey: queryKeys.homepageMatchGroups.list(venueId?.toString()),
     queryFn: () =>
-      fetchAllMatchGroupsFromUnifiedFeed(client, venueId!, "volume"),
-    enabled: !!client && venueId !== undefined,
+      fetchHomepageMatchGroupsFromUnifiedFeed(
+        client,
+        venueId!,
+        HOMEPAGE_FETCH_TARGET,
+      ),
+    enabled: enabled && !!client && venueId !== undefined,
     staleTime: 60_000,
     refetchInterval: 120_000,
   });
@@ -53,5 +59,5 @@ export function useHomepageMatchGroups(statusFilter: StatusFilter) {
     return result.slice(0, HOMEPAGE_MAX);
   }, [data, statusFilter]);
 
-  return { groups, isLoading, error };
+  return { groups, isLoading: enabled && isLoading, error };
 }

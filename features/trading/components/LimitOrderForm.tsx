@@ -165,11 +165,11 @@ export function LimitOrderForm({
       </div>
 
       {/* Quick-add chips with container background */}
-      <div className="flex gap-1 rounded-lg p-1.5">
+      <div className="grid grid-cols-3 gap-1 rounded-lg p-1.5 sm:flex">
         {QUANTITY_DELTAS.map((d) => (
           <Button
             key={d}
-            className="min-w-0 h-6 px-2 bg-default-100 text-xs flex-1"
+            className="min-w-0 h-7 px-2 bg-default-100 text-xs sm:h-6 sm:flex-1"
             size="sm"
             variant="flat"
             onPress={() => {
