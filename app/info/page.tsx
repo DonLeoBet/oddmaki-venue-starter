@@ -15,22 +15,34 @@ export default function InfoPage() {
       </p>
 
       <p className="text-lg mb-8">
-        We got sick of it. So, we built **Poly.Football**—a pure, no-nonsense
-        prediction market made by football fans, for football fans. No corporate
-        middlemen, no hidden fees, just raw peer-to-peer trading on the
-        beautiful game.
+        We got sick of it. So, we built <strong>Poly.Football</strong>—a pure,
+        no-nonsense prediction market made by football fans, for football fans.
+        No corporate middlemen, no hidden fees, just raw peer-to-peer trading on
+        the beautiful game.
       </p>
 
       <h2 className="text-2xl font-bold text-cyan-400 mb-4">
         Is it legit? Where&apos;s my money?
       </h2>
       <p className="mb-6">
-        Here is the best part: **We never touch your money.** Poly.Football runs
-        entirely on the Base blockchain using the decentralized OddMaki
-        protocol. When you lock in a trade, your funds stay securely inside
-        audit-proof smart contracts on-chain, or rest safely right in your own
-        wallet. No corporate boss can block your account or run away with your
-        bankroll. It&apos;s 100% transparent and completely fair.
+        Here is the best part: <strong>We never touch your money.</strong>{" "}
+        Poly.Football runs entirely on the Base blockchain using the
+        decentralized OddMaki protocol. When you lock in a trade, your funds
+        stay securely inside audit-proof smart contracts on-chain, or rest
+        safely right in your own wallet. No corporate boss can block your
+        account or run away with your bankroll. It&apos;s transparent and
+        non-custodial.
+      </p>
+
+      <h2 className="text-2xl font-bold text-cyan-400 mb-4">
+        How are results settled?
+      </h2>
+      <p className="mb-6">
+        Match results are proposed on-chain after full time and verified through
+        UMA&apos;s oracle. There is a 24-hour window to dispute a wrong result
+        before final settlement. Always check the proposed outcome before
+        redeeming — if something looks wrong, dispute it in the resolution
+        panel on the match page.
       </p>
 
       <h2 className="text-2xl font-bold text-pink-500 mb-4">
@@ -38,10 +50,8 @@ export default function InfoPage() {
       </h2>
       <p className="mb-6">
         You don&apos;t need to be a crypto wizard to play here. Thanks to our
-        **Privy integration**, you can log in instantly with your Email, Apple,
-        or Google account. Once inside, you can use the **Top-Up** button to buy
-        crypto directly via your mobile banking app or credit card. No
-        complicated wallet setup required.
+        Privy integration, you can log in with Email, Apple, or Google. Use the
+        Top-Up button to add USDC on Base via card or bank where supported.
       </p>
 
       <div className="border-l-4 border-cyan-500 bg-gray-900 p-4 rounded mt-8">

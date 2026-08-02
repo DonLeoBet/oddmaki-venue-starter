@@ -8,6 +8,8 @@ import { Skeleton } from "@heroui/skeleton";
 import { Tooltip } from "@heroui/tooltip";
 import { useAccount } from "wagmi";
 
+import { MATCH_RESOLUTION_COPY } from "@/config/resolution.config";
+
 import { useMarketStatus } from "../hooks/useMarketStatus";
 import { useSettleAssertion } from "../hooks/useSettleAssertion";
 import { useReportResolution } from "../hooks/useReportResolution";
@@ -127,12 +129,20 @@ export function ResolutionPanel({
 
         {/* ACTIVE_NO_ASSERTION — show assert form */}
         {status.phase === "ACTIVE_NO_ASSERTION" && (
-          <AssertOutcomeForm
-            liveness={status.question.liveness}
-            marketId={marketId}
-            outcomes={outcomes}
-            requiredBond={status.question.requiredBond}
-          />
+          <>
+            <p className="text-xs text-default-500 leading-relaxed mb-2">
+              Results are usually proposed within{" "}
+              {MATCH_RESOLUTION_COPY.typicalProposal} of full time. The on-chain
+              challenge window is {MATCH_RESOLUTION_COPY.challengeWindow}; if
+              unchallenged, the market can be settled after that period.
+            </p>
+            <AssertOutcomeForm
+              liveness={status.question.liveness}
+              marketId={marketId}
+              outcomes={outcomes}
+              requiredBond={status.question.requiredBond}
+            />
+          </>
         )}
 
         {/* DISPUTED, DVM not yet resolved — escalation explainer */}

@@ -17,13 +17,42 @@ import Link from "next/link";
 
 export async function generateMetadata(): Promise<Metadata> {
   const name = await resolveVenueName();
+  const domain = BRAND_CONFIG.domain.replace(/^https?:\/\//, "");
+  const metadataBase = new URL(
+    `https://${domain.startsWith("www.") ? domain : `www.${domain}`}`,
+  );
+  const description =
+    "Trade football match markets on Base — 1X2 and more. On-chain prediction markets powered by OddMaki. No bookmaker margin, peer-to-peer on Poly.Football.";
+
+  const googleVerification = process.env.GOOGLE_SITE_VERIFICATION?.trim();
 
   return {
+    metadataBase,
     title: {
-      default: name,
-      template: `%s - ${name}`,
+      default: `${name} — Football Prediction Markets on Base`,
+      template: `%s | ${name}`,
     },
-    description: venueConfig.branding.description,
+    description,
+    openGraph: {
+      type: "website",
+      locale: "en_GB",
+      siteName: name,
+      title: name,
+      description,
+      url: metadataBase,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: name,
+      description,
+    },
+    robots: {
+      index: true,
+      follow: true,
+    },
+    ...(googleVerification ?
+      { verification: { google: googleVerification } }
+    : {}),
     icons: {
       icon: venueConfig.branding.favicon,
     },
@@ -58,6 +87,18 @@ export default function RootLayout({
             <AppShell>{children}</AppShell>
             <footer className="w-full flex flex-col items-center justify-center gap-2 py-4">
               <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm">
+                <Link
+                  className="text-default-400 hover:text-primary transition-colors"
+                  href="/info"
+                >
+                  How it works
+                </Link>
+                <Link
+                  className="text-default-400 hover:text-primary transition-colors"
+                  href="/about"
+                >
+                  About
+                </Link>
                 {CLUB_PAGES.map((club) => (
                   <Link
                     key={club.slug}

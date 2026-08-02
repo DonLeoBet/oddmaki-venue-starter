@@ -1,5 +1,6 @@
 import type { ApiFootballFixtureRow, PreparedMatchMarketGroup, MatchMarketCategory } from "./types";
 
+import { MATCH_MARKET_LIVENESS_SECONDS } from "@/config/resolution.config";
 import { MAX_TAGS } from "@/config/tags.config";
 import {
   getMatchImportMarketTypes,
@@ -203,7 +204,7 @@ export function mapFixtureToMarketGroup(
     outcomes,
     tickSize: "0.01",
     additionalReward: 0,
-    liveness: 0,
+    liveness: MATCH_MARKET_LIVENESS_SECONDS,
     activateImmediately: true,
     leagueTag,
   };

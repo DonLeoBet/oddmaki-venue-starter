@@ -491,6 +491,12 @@ function buildFaq(params: {
       "1X2 covers the full-time result: home win, draw, or away win. Each outcome is a separate on-chain market. Prices reflect implied probability from trading on Base.",
   });
 
+  items.push({
+    question: "When are match markets resolved?",
+    answer:
+      "After full time, the official result is usually proposed on-chain within about an hour. There is then a 24-hour challenge window before final settlement. If no one disputes, winners can redeem USDC once the market is resolved.",
+  });
+
   if (params.predictionAdvice) {
     items.push({
       question: `Who is favoured in ${params.home} vs ${params.away}?`,
