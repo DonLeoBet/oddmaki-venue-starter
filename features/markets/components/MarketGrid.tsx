@@ -6,6 +6,7 @@ import type { UnifiedFeedItem } from "../types";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import NextLink from "next/link";
+import { Button } from "@heroui/button";
 
 import { useUnifiedFeed } from "../hooks/useUnifiedFeed";
 import { useHomepageMatchGroups } from "../hooks/useHomepageMatchGroups";
@@ -31,13 +32,18 @@ import {
   useSeriesCurrentWindows,
 } from "@/features/price-market-series";
 import { CATEGORIES } from "@/config/tags.config";
-import { LEAGUE_BY_SLUG } from "@/config/leagues";
+import { getLeagueName, LEAGUE_BY_SLUG } from "@/config/leagues";
 import {
   groupMatchesLeagueSlug,
   isNewTaxonomyMatchGroup,
   isOutrightGroup,
 } from "@/lib/markets/marketFilters";
 import { groupMatchesCountryTag } from "@/lib/football/outright-sidebar";
+import { HOMEPAGE_PRIORITY_LEAGUES } from "@/lib/markets/diversifyMatchGroups";
+import { useBrand } from "@/features/brand";
+
+/** Initial match cards on a league page before "See more". */
+const LEAGUE_MATCH_PREVIEW = 6;
 
 function isOutrightFeedItem(item: UnifiedFeedItem): boolean {
   return item.type === "group" && isOutrightGroup(item.data.tags);
@@ -70,12 +76,14 @@ function FeedItemCard({ item }: { item: UnifiedFeedItem }) {
 
 export function MarketGrid() {
   const searchParams = useSearchParams();
+  const { locale } = useBrand();
   const selectedCategory = searchParams.get("category");
   const leagueFilter = searchParams.get("league");
   const countryFilter = searchParams.get("country");
   const sortParam = searchParams.get("sort");
   const searchQuery = searchParams.get("q")?.trim() ?? "";
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("Active");
+  const [leagueExpanded, setLeagueExpanded] = useState(false);
   const { showFilters } = useFilterToggle();
 
   const isHomepage = !selectedCategory && searchQuery.length < 2;
@@ -87,6 +95,10 @@ export function MarketGrid() {
     selectedCategory && LEAGUE_BY_SLUG[selectedCategory] ?
       selectedCategory
     : null;
+
+  useEffect(() => {
+    setLeagueExpanded(false);
+  }, [leagueCategorySlug]);
 
   // Progressive unified feed for league pages — the dedicated deep scan
   // hung for minutes when a bulk import flooded "created" sort.
@@ -180,11 +192,14 @@ export function MarketGrid() {
     [filteredItems],
   );
 
-  // Keep paging until a league slate fills — SA flood can bury other leagues.
+  // Fetch just enough for the preview slate (or more once expanded).
   useEffect(() => {
     if (!leagueCategorySlug || !useUnifiedFeedEnabled) return;
     if (!hasNextPage || isFetchingNextPage || isLoading) return;
-    if (leagueMatchItems.length >= 12) return;
+
+    const target = leagueExpanded ? 24 : LEAGUE_MATCH_PREVIEW;
+
+    if (leagueMatchItems.length >= target) return;
 
     fetchNextPage();
   }, [
@@ -194,6 +209,7 @@ export function MarketGrid() {
     isFetchingNextPage,
     isLoading,
     leagueMatchItems.length,
+    leagueExpanded,
     fetchNextPage,
   ]);
 
@@ -209,6 +225,16 @@ export function MarketGrid() {
         item.type === "group" &&
         groupMatchesLeagueSlug(item.data.tags ?? [], slug),
       );
+
+    const priorityOutrights = outrightFeedItems
+      .filter((item) => {
+        if (item.type !== "group") return false;
+
+        return HOMEPAGE_PRIORITY_LEAGUES.some((slug) =>
+          groupMatchesLeagueSlug(item.data.tags ?? [], slug),
+        );
+      })
+      .slice(0, 4);
 
     if (selectedCategory === "outrights") {
       let items = outrightFeedItems;
@@ -240,10 +266,14 @@ export function MarketGrid() {
 
       if (hasLeagueFilter) {
         const leagueOutrights = filterOutrightsForLeague(selectedCategory);
+        const matches =
+          leagueExpanded ?
+            leagueMatchItems
+          : leagueMatchItems.slice(0, LEAGUE_MATCH_PREVIEW);
 
         return {
-          mainGridItems: leagueMatchItems,
-          outrightSectionItems: leagueOutrights,
+          mainGridItems: matches,
+          outrightSectionItems: leagueOutrights.slice(0, 1),
           outrightSectionTitle: "Long-term odds",
           outrightViewAllHref: `/?category=outrights&league=${selectedCategory}`,
         };
@@ -253,7 +283,10 @@ export function MarketGrid() {
     if (isHomepage) {
       return {
         mainGridItems: homepageFeedItems,
-        outrightSectionItems: outrightFeedItems.slice(0, 4),
+        outrightSectionItems:
+          priorityOutrights.length > 0 ?
+            priorityOutrights
+          : outrightFeedItems.slice(0, 4),
         outrightSectionTitle: "Long-term odds",
         outrightViewAllHref: "/?category=outrights",
       };
@@ -272,6 +305,7 @@ export function MarketGrid() {
     selectedCategory,
     leagueCategorySlug,
     leagueMatchItems,
+    leagueExpanded,
     homepageFeedItems,
     isHomepage,
     leagueFilter,
@@ -346,7 +380,17 @@ export function MarketGrid() {
     outrightSectionItems.length > 0 &&
     selectedCategory !== "outrights";
 
-  const outrightOnTop = Boolean(leagueCategorySlug && showOutrightSection);
+  const outrightOnTop = Boolean(
+    (leagueCategorySlug || isHomepage) && showOutrightSection,
+  );
+
+  const leagueName =
+    leagueCategorySlug ? getLeagueName(leagueCategorySlug, locale) : null;
+
+  const canShowMoreLeagueMatches =
+    Boolean(leagueCategorySlug) &&
+    !leagueExpanded &&
+    (leagueMatchItems.length > LEAGUE_MATCH_PREVIEW || hasNextPage);
 
   const gridEmpty =
     isHomepage ?
@@ -355,14 +399,15 @@ export function MarketGrid() {
       mainGridItems.length === 0 &&
       !isLoading &&
       !isFetchingNextPage &&
-      !hasNextPage
+      !hasNextPage &&
+      outrightSectionItems.length === 0
     : filteredItems.length === 0 && !hasNextPage;
 
   const outrightSection = showOutrightSection ? (
-    <section className="flex flex-col gap-4 pt-4">
+    <section className="flex flex-col gap-3 sm:gap-4">
       <div className="flex items-center justify-between gap-3 px-0.5">
-        <h2 className="text-xl font-bold tracking-tight text-foreground">
-          {outrightSectionTitle}
+        <h2 className="text-base font-bold tracking-tight text-foreground sm:text-xl">
+          {leagueName ? `${leagueName} winner` : outrightSectionTitle}
         </h2>
         <NextLink
           className="text-sm font-medium text-primary hover:underline"
@@ -441,6 +486,19 @@ export function MarketGrid() {
                 <MarketSkeleton key={`next-${i}`} />
               ))}
           </div>
+
+          {canShowMoreLeagueMatches && (
+            <div className="flex justify-center pt-2">
+              <Button
+                className="font-semibold"
+                color="primary"
+                variant="flat"
+                onPress={() => setLeagueExpanded(true)}
+              >
+                See more {leagueName ?? "league"} markets
+              </Button>
+            </div>
+          )}
 
           {showOutrightSection && !outrightOnTop && outrightSection}
 

@@ -84,6 +84,12 @@ export const BRAND_LOGO_INTRINSIC_SIZE: Record<BrandId, BrandLogoIntrinsicSize> 
     glazenbol: { width: 256, height: 31 },
   };
 
+export const BRAND_FAVICON_URL: Record<BrandId, string> = {
+  polyfootball: "/favicon.png",
+  topclass: "/favicon.png",
+  glazenbol: "/favicon.png",
+};
+
 export const BRAND_LOGO_URL: Record<BrandId, string> = {
   polyfootball: "/logo.png",
   topclass: "/topclass-logo-transparent.png",
@@ -100,11 +106,29 @@ export function getBrandLogoIntrinsicSize(
   ) {
     return BRAND_LOGO_INTRINSIC_SIZE.topclass;
   }
+
+  if (logoUrl === "/wiseguy-logo.png") {
+    return { width: 834, height: 148 };
+  }
+
   return BRAND_LOGO_INTRINSIC_SIZE[brandId];
 }
 
 export function getDefaultBrandLogoUrl(brandId: BrandId): string {
   return BRAND_LOGO_URL[brandId];
+}
+
+export function getDefaultBrandFaviconUrl(brandId: BrandId): string {
+  const logo = process.env.NEXT_PUBLIC_BRAND_LOGO_URL?.trim();
+
+  if (logo === "/wiseguy-logo.png") {
+    return "/wiseguy-favicon.png";
+  }
+
+  return (
+    process.env.NEXT_PUBLIC_BRAND_FAVICON_URL?.trim() ||
+    BRAND_FAVICON_URL[brandId]
+  );
 }
 
 const resolvedBrandId = resolveBrandId(process.env.NEXT_PUBLIC_BRAND_ID);
@@ -120,6 +144,9 @@ export const BRAND_CONFIG = {
   logoUrl:
     process.env.NEXT_PUBLIC_BRAND_LOGO_URL ||
     getDefaultBrandLogoUrl(resolvedBrandId),
+  get faviconUrl(): string {
+    return getDefaultBrandFaviconUrl(this.id);
+  },
   get defaultLocale(): Locale {
     return resolveBrandDefaultLocale(this.id);
   },

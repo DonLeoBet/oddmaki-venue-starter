@@ -55,7 +55,11 @@ export async function generateMetadata(): Promise<Metadata> {
       { verification: { google: googleVerification } }
     : {}),
     icons: {
-      icon: venueConfig.branding.favicon,
+      icon: [
+        { url: venueConfig.branding.favicon, type: "image/png" },
+        { url: "/favicon.ico", sizes: "32x32" },
+      ],
+      apple: "/apple-touch-icon.png",
     },
   };
 }

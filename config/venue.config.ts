@@ -50,7 +50,7 @@ export const venueConfig = {
     name: envVenueName ?? BRAND_CONFIG.name,
     description: "Trade on prediction markets powered by OddMaki Protocol",
     logo: BRAND_CONFIG.logoUrl,
-    favicon: BRAND_CONFIG.logoUrl,
+    favicon: BRAND_CONFIG.faviconUrl,
     domain: BRAND_CONFIG.domain,
     traditionalBookieUrl: BRAND_CONFIG.traditionalBookieUrl,
     // Note: Theme colors are configured in theme.config.json + brand.config.ts

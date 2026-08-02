@@ -1,19 +1,46 @@
 import type { FormattedMarketGroup } from "@/features/market-groups/types";
 
 import { parseLeagueSlugFromTags } from "@/config/leagues";
-import { LIVE_LEAGUE_SLUGS } from "@/config/liveLeagues";
 import { kickoffUnixFromTags } from "@/lib/markets/filterMatchGroups";
 
+/** Big European leagues — prefer these on the homepage mix. */
+export const HOMEPAGE_PRIORITY_LEAGUES = [
+  "premier-league",
+  "eredivisie",
+  "champions-league",
+  "la-liga",
+  "serie-a",
+  "bundesliga",
+  "ligue-1",
+  "championship",
+  "europa-league",
+  "primeira-liga",
+  "super-lig",
+] as const;
+
+/** Cap how many cards smaller leagues can take on the homepage. */
+export const HOMEPAGE_MINOR_LEAGUE_MAX = 1;
+
+export const HOMEPAGE_PRIORITY_MAX_PER = 3;
+
 /**
- * Round-robin across leagues so the homepage isn't flooded by one recent import
- * (e.g. Saudi Pro League).
+ * Round-robin across leagues with priority for top competitions so
+ * Saudi / Austrian floods don't dominate the homepage.
  */
 export function diversifyMatchGroupsByLeague(
   groups: FormattedMarketGroup[],
   maxTotal: number,
-  maxPerLeague = 3,
+  maxPerLeague = HOMEPAGE_PRIORITY_MAX_PER,
+  options?: {
+    priorityLeagues?: readonly string[];
+    minorLeagueMax?: number;
+  },
 ): FormattedMarketGroup[] {
   if (groups.length === 0 || maxTotal <= 0) return [];
+
+  const priority = options?.priorityLeagues ?? HOMEPAGE_PRIORITY_LEAGUES;
+  const minorMax = options?.minorLeagueMax ?? HOMEPAGE_MINOR_LEAGUE_MAX;
+  const prioritySet = new Set<string>(priority);
 
   const buckets = new Map<string, FormattedMarketGroup[]>();
 
@@ -34,10 +61,8 @@ export function diversifyMatchGroupsByLeague(
   }
 
   const leagueOrder = [
-    ...LIVE_LEAGUE_SLUGS.filter((slug) => buckets.has(slug)),
-    ...Array.from(buckets.keys()).filter(
-      (slug) => !(LIVE_LEAGUE_SLUGS as readonly string[]).includes(slug),
-    ),
+    ...priority.filter((slug) => buckets.has(slug)),
+    ...Array.from(buckets.keys()).filter((slug) => !prioritySet.has(slug)),
   ];
 
   const taken = new Map<string, number>();
@@ -51,8 +76,9 @@ export function diversifyMatchGroupsByLeague(
       if (result.length >= maxTotal) break;
 
       const used = taken.get(slug) ?? 0;
+      const cap = prioritySet.has(slug) ? maxPerLeague : minorMax;
 
-      if (used >= maxPerLeague) continue;
+      if (used >= cap) continue;
 
       const bucket = buckets.get(slug);
 

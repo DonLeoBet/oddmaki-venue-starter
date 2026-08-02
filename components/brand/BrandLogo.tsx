@@ -26,7 +26,10 @@ export function BrandLogo({
   const { width: intrinsicWidth, height: intrinsicHeight } =
     getBrandLogoIntrinsicSize(BRAND_CONFIG.id, logo);
   const width = Math.round(height * (intrinsicWidth / intrinsicHeight));
-  const maxWidth = Math.round(220 * (intrinsicWidth / 256));
+  const maxWidth =
+    logo === "/wiseguy-logo.png" ?
+      Math.round(200 * (intrinsicWidth / 834))
+    : Math.round(220 * (intrinsicWidth / 256));
 
   const image = (
     <Image

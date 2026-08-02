@@ -1,9 +1,7 @@
-<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
-  <title>OddMaki</title>
-  <circle cx="64" cy="64" r="64" fill="#0a0a0a"/>
-  <g stroke="#00F0FF" stroke-width="3" fill="none">
-    <circle cx="64" cy="64" r="60"/>
-    <circle cx="64" cy="64" r="40"/>
-  </g>
-  <circle cx="64" cy="64" r="32" fill="#FF00E5"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <title>Poly.Football</title>
+  <rect width="64" height="64" rx="12" fill="#0a0b0d"/>
+  <path fill="#C5A367" d="M8 16h30L54 32 38 48H8l12-16L8 16z"/>
+  <path fill="#0a0b0d" d="M18 22h6l8 10-8 10h-6l8-10-8-10z"/>
+  <path fill="#0a0b0d" d="M28 22h5l8 10-8 10h-5l8-10-8-10z"/>
 </svg>
