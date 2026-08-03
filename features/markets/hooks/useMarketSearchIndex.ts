@@ -13,12 +13,14 @@ import {
   toMarketSearchRecord,
   type MarketSearchRecord,
 } from "../utils/matchMarketSearch";
+import { isMatchMarketsUiEnabled } from "@/config/matchMarkets.config";
 import {
   buildMaxOutrightRevisionMap,
   isNewTaxonomyMatchGroup,
   isOutrightGroup,
   isSupersededOutrightInBatch,
 } from "@/lib/markets/marketFilters";
+import { isPublicOutrightGroup } from "@/config/outrights.config";
 
 const PAGE_SIZE = 100;
 const MAX_GROUPS = 1000;
@@ -84,16 +86,16 @@ async function fetchMarketSearchIndex(
     rawGroups.map((entry) => ({ tags: entry.tags })),
   );
 
-  for (const { formatted, tags, outcomes } of rawGroups) {
-    if (
-      isOutrightGroup(tags) &&
-      isSupersededOutrightInBatch(tags, maxRevision)
-    ) {
-      continue;
-    }
+  const matchesEnabled = isMatchMarketsUiEnabled();
 
-    if (!isOutrightGroup(tags) && !isNewTaxonomyMatchGroup(tags, outcomes)) {
-      continue;
+  for (const { formatted, tags, outcomes } of rawGroups) {
+    if (isOutrightGroup(tags)) {
+      if (!isPublicOutrightGroup(tags)) continue;
+      if (isSupersededOutrightInBatch(tags, maxRevision)) continue;
+    } else {
+      // Single-match markets are permanently excluded from search.
+      if (!matchesEnabled) continue;
+      if (!isNewTaxonomyMatchGroup(tags, outcomes)) continue;
     }
 
     records.push(
@@ -116,7 +118,11 @@ export function useMarketSearchIndex() {
   const { locale } = useBrand();
 
   return useQuery({
-    queryKey: queryKeys.marketSearch.index(venueId?.toString(), locale),
+    queryKey: queryKeys.marketSearch.index(
+      venueId?.toString(),
+      locale,
+      isMatchMarketsUiEnabled() ? "matches-on" : "matches-off",
+    ),
     queryFn: () => fetchMarketSearchIndex(client, venueId!, locale),
     enabled: !!client && venueId !== undefined,
     staleTime: 5 * 60_000,

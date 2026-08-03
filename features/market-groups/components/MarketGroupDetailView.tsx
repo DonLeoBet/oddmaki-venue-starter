@@ -30,9 +30,14 @@ import { useLeagueTeamLogos } from "@/features/football/hooks/useLeagueTeamLogos
 import { MatchContextSidebar } from "@/features/football/components/MatchContextSidebar";
 import { MatchFaqSection } from "@/features/football/components/MatchFaqSection";
 import { MatchSocialPanel } from "@/features/football/components/MatchSocialPanel";
-import { LiveMatchTradingNotice } from "@/features/football/components/LiveMatchTradingNotice";
+import { MarketLifecycleBanner } from "@/features/football/components/MarketLifecycleBanner";
 import { isOutrightGroup } from "@/lib/markets/marketFilters";
+import {
+  isMatchMarketsUiEnabled,
+  isSingleMatchMarketGroup,
+} from "@/config/matchMarkets.config";
 import { useIsMdUp } from "@/lib/hooks/useIsMdUp";
+import { useMarketStatus } from "@/features/resolution/hooks/useMarketStatus";
 
 interface MarketGroupDetailViewProps {
   groupId: string;
@@ -55,6 +60,8 @@ export function MarketGroupDetailView({ groupId }: MarketGroupDetailViewProps) {
   const [selectedOutcomeIndex, setSelectedOutcomeIndex] = useState<0 | 1>(0);
   const fixtureTeams = useFixtureTeams(group);
   const isOutright = isOutrightGroup(group?.tags);
+  const matchMarketsRetired =
+    !isMatchMarketsUiEnabled() && isSingleMatchMarketGroup(group?.tags);
   const { resolveLogo: resolveOutrightLogo } = useLeagueTeamLogos(
     isOutright ? group?.tags : undefined,
   );
@@ -106,6 +113,21 @@ export function MarketGroupDetailView({ groupId }: MarketGroupDetailViewProps) {
     );
   }
 
+  if (matchMarketsRetired) {
+    return (
+      <section className="flex flex-col gap-6 pt-4 pb-8 md:pt-6 md:pb-10">
+        <div className="text-center py-12">
+          <p className="text-lg font-semibold text-foreground">
+            Match market unavailable
+          </p>
+          <p className="mt-2 text-default-500">
+            Single-match markets have been retired from this site.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
   const selectedMarket = displayMarkets.find(
     (m) => m.marketId === selectedMarketId,
   );
@@ -127,6 +149,9 @@ export function MarketGroupDetailView({ groupId }: MarketGroupDetailViewProps) {
 
   const isResolved = selectedMarket?.status === "Resolved";
   const canTrade = group.status !== "Draft" && !!selectedMarket;
+  const { data: selectedResolution } = useMarketStatus(
+    selectedMarket && !isResolved ? selectedMarket.marketId : "",
+  );
 
   const renderTradePanel = (): ReactNode => {
     if (!canTrade || !selectedMarket) return null;
@@ -142,7 +167,13 @@ export function MarketGroupDetailView({ groupId }: MarketGroupDetailViewProps) {
 
     return (
       <>
-        {!isOutright && <LiveMatchTradingNotice groupTags={group.tags} />}
+        {!isOutright && (
+          <MarketLifecycleBanner
+            groupTags={group.tags}
+            marketResolved={isResolved}
+            resolutionPhase={selectedResolution?.phase}
+          />
+        )}
         <UnifiedTradingPanel
           key={selectedMarket.marketId}
           initialOutcomeIndex={selectedOutcomeIndex}
@@ -162,16 +193,33 @@ export function MarketGroupDetailView({ groupId }: MarketGroupDetailViewProps) {
   const renderSettlementPanel = (): ReactNode => {
     if (!canTrade || !selectedMarket) return null;
 
-    return isResolved ?
+    if (isResolved) {
+      return (
         <RedeemPanel
           standalone
           marketId={selectedMarket.marketId}
           outcomes={selectedMarket.outcomes}
         />
-      : <ResolutionPanel
-          marketId={selectedMarket.marketId}
-          outcomes={selectedMarket.outcomes}
-        />;
+      );
+    }
+
+    // Active / Closed: lifecycle banner is enough — hide assert/dispute clutter.
+    // Show this panel only once an assertion exists (challenge / pending).
+    const phase = selectedResolution?.phase;
+    const showResolutionTools =
+      phase === "ASSERTION_PENDING" ||
+      phase === "ASSERTION_EXPIRED" ||
+      phase === "SETTLED_NOT_REPORTED";
+
+    if (!showResolutionTools) return null;
+
+    return (
+      <ResolutionPanel
+        groupTags={group.tags}
+        marketId={selectedMarket.marketId}
+        outcomes={selectedMarket.outcomes}
+      />
+    );
   };
 
   const renderContextPanel = (): ReactNode =>

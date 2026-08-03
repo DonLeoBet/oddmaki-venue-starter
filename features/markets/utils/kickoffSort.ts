@@ -12,7 +12,11 @@ import {
   isSupersededOutrightInBatch,
 } from "@/lib/markets/marketFilters";
 import { isPublicOutrightGroup } from "@/config/outrights.config";
-import { isPublicMatchGroup } from "@/config/matchMarkets.config";
+import {
+  isMatchMarketsUiEnabled,
+  isPublicMatchGroup,
+  isSingleMatchMarketGroup,
+} from "@/config/matchMarkets.config";
 
 const MATCH_RESULT_DATE = /Match Result \((.+)\)\s*$/;
 
@@ -139,7 +143,7 @@ export function filterFeedHideLegacyOutrights(
   });
 }
 
-/** Hide retired standalone markets and pre-revision fixture groups. */
+/** Hide retired standalone markets and all single-match / fixture groups. */
 export function filterFeedHideRetiredMatchMarkets(
   items: UnifiedFeedItem[],
 ): UnifiedFeedItem[] {
@@ -151,10 +155,12 @@ export function filterFeedHideRetiredMatchMarkets(
 
       if (isOutrightGroup(tags)) return true;
 
-      if (
-        isFixtureMarket(tags) ||
-        tags?.some((tag) => tag.startsWith("match-markets"))
-      ) {
+      // Permanent retirement — never surface fixture / match-markets groups.
+      if (!isMatchMarketsUiEnabled() && isSingleMatchMarketGroup(tags)) {
+        return false;
+      }
+
+      if (isSingleMatchMarketGroup(tags)) {
         if (!isPublicMatchGroup(tags)) return false;
         if (isRetiredBeatOnlyMatchGroup(tags, item.data.outcomes ?? [])) {
           return false;

@@ -36,10 +36,10 @@ export function SidebarAccordion({
     level === 0 ? "px-3" : level === 1 ? "pl-6 pr-2" : "pl-9 pr-2";
   const labelClass =
     level === 0
-      ? "text-[15px] font-semibold text-white/90 [[data-brand=wiseguy]_&]:text-base"
+      ? "text-[15px] font-semibold text-white/90 [[data-brand=wiseguy]_&]:text-[17px] [[data-brand=wiseguy]_&]:font-bold"
       : level === 1
-        ? "text-[13px] font-semibold text-white/80 [[data-brand=wiseguy]_&]:text-[15px]"
-        : "text-[13px] font-medium text-default-300 [[data-brand=wiseguy]_&]:text-sm";
+        ? "text-[13px] font-semibold text-white/80 [[data-brand=wiseguy]_&]:text-base [[data-brand=wiseguy]_&]:font-semibold"
+        : "text-[13px] font-medium text-default-300 [[data-brand=wiseguy]_&]:text-[15px]";
   const indentClass =
     level === 0 ? "pl-2" : level === 1 ? "pl-4" : "pl-5";
 
@@ -78,6 +78,8 @@ interface SidebarLinkProps {
   active?: boolean;
   sub?: boolean;
   depth?: 1 | 2;
+  /** Optional leading icon (e.g. country flag emoji). */
+  leading?: React.ReactNode;
   onNavigate?: () => void;
 }
 
@@ -87,18 +89,19 @@ export function SidebarLink({
   active = false,
   sub = false,
   depth = 1,
+  leading,
   onNavigate,
 }: SidebarLinkProps) {
   const paddingClass =
     depth === 2
-      ? "pl-12 pr-3 text-[12px] [[data-brand=wiseguy]_&]:text-[13px]"
+      ? "pl-12 pr-3 text-[12px] [[data-brand=wiseguy]_&]:text-sm"
       : sub
-        ? "pl-8 pr-3 text-[13px] [[data-brand=wiseguy]_&]:text-[15px]"
-        : "px-3 text-sm [[data-brand=wiseguy]_&]:text-[15px]";
+        ? "pl-8 pr-3 text-[13px] [[data-brand=wiseguy]_&]:text-base"
+        : "px-3 text-sm [[data-brand=wiseguy]_&]:text-base";
 
   return (
     <NextLink
-      className={`block rounded-md py-1.5 text-left transition-colors ${paddingClass} ${
+      className={`flex items-center gap-2 rounded-md py-1.5 text-left transition-colors ${paddingClass} ${
         active
           ? "font-semibold text-primary"
           : sub || depth === 2
@@ -108,7 +111,12 @@ export function SidebarLink({
       href={href}
       onClick={onNavigate}
     >
-      {label}
+      {leading ?
+        <span aria-hidden className="inline-flex w-5 shrink-0 justify-center text-base leading-none">
+          {leading}
+        </span>
+      : null}
+      <span className="min-w-0 truncate">{label}</span>
     </NextLink>
   );
 }
@@ -148,8 +156,8 @@ export function SidebarSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="flex flex-col gap-0.5 px-1 py-2">
-      <h2 className="px-3 pb-1 text-[10px] font-bold uppercase tracking-[0.16em] text-default-500">
+    <section className="flex flex-col gap-0.5 px-1 py-2 [[data-brand=wiseguy]_&]:gap-0.5 [[data-brand=wiseguy]_&]:px-0.5 [[data-brand=wiseguy]_&]:py-1.5">
+      <h2 className="px-3 pb-1 text-[10px] font-bold uppercase tracking-[0.16em] text-default-500 [[data-brand=wiseguy]_&]:pb-1.5 [[data-brand=wiseguy]_&]:tracking-[0.14em]">
         {title}
       </h2>
       {children}

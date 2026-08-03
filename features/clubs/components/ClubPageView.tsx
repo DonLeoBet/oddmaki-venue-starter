@@ -2,6 +2,7 @@
 
 import NextLink from "next/link";
 
+import { isMatchMarketsUiEnabled } from "@/config/matchMarkets.config";
 import { getClubPage, fixtureTitleMatchesClub } from "@/config/clubPages";
 import { useBrand } from "@/features/brand";
 import { MarketGroupCard } from "@/features/market-groups/components/MarketGroupCard";
@@ -17,7 +18,8 @@ interface ClubPageViewProps {
 export function ClubPageView({ clubSlug }: ClubPageViewProps) {
   const club = getClubPage(clubSlug);
   const { brandId, locale } = useBrand();
-  const { data, isLoading } = useUnifiedFeed("volume");
+  const matchesEnabled = isMatchMarketsUiEnabled();
+  const { data, isLoading } = useUnifiedFeed("volume", matchesEnabled);
 
   if (!club) {
     return (
@@ -28,15 +30,16 @@ export function ClubPageView({ clubSlug }: ClubPageViewProps) {
   }
 
   const groups =
-    data?.pages
-      .flatMap((page) => page.items)
-      .filter((item) => item.type === "group")
-      .map((item) => item.data)
-      .filter((group) => {
-        if (!fixtureTitleMatchesClub(group.marketQuestion, club)) return false;
+    !matchesEnabled ? []
+    : data?.pages
+        .flatMap((page) => page.items)
+        .filter((item) => item.type === "group")
+        .map((item) => item.data)
+        .filter((group) => {
+          if (!fixtureTitleMatchesClub(group.marketQuestion, club)) return false;
 
-        return isNewTaxonomyMatchGroup(group.tags, group.outcomes);
-      }) ?? [];
+          return isNewTaxonomyMatchGroup(group.tags, group.outcomes);
+        }) ?? [];
 
   return (
     <section className="flex flex-col gap-6 pt-4 pb-8 md:pt-6 md:pb-10">

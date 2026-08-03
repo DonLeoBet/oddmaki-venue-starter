@@ -28,6 +28,7 @@ import { MarketStatusFilter } from "./MarketStatusFilter";
 import { MarketGroupCard } from "@/features/market-groups/components/MarketGroupCard";
 import { OutrightGroupCard } from "@/features/market-groups/components/OutrightGroupCard";
 import { MarketSearchResults } from "./MarketSearchResults";
+import { CountryOutrightTabs } from "./CountryOutrightTabs";
 import {
   PriceSeriesCard,
   useSeriesCurrentWindows,
@@ -38,13 +39,15 @@ import {
   groupMatchesLeagueSlug,
   isNewTaxonomyMatchGroup,
   isOutrightGroup,
+  parseOutrightTag,
 } from "@/lib/markets/marketFilters";
 import { groupMatchesCountryTag } from "@/lib/football/outright-sidebar";
-import { HOMEPAGE_PRIORITY_LEAGUES } from "@/lib/markets/diversifyMatchGroups";
+import { HOMEPAGE_FEATURED_OUTRIGHT_LEAGUES } from "@/lib/markets/diversifyMatchGroups";
 import { useBrand } from "@/features/brand";
+import { isMatchMarketsUiEnabled } from "@/config/matchMarkets.config";
 
 /** Initial match cards on a league page before "See more". */
-const LEAGUE_MATCH_PREVIEW = 12;
+const LEAGUE_MATCH_PREVIEW = 24;
 
 function isOutrightFeedItem(item: UnifiedFeedItem): boolean {
   return item.type === "group" && isOutrightGroup(item.data.tags);
@@ -110,6 +113,7 @@ export function MarketGrid() {
   const {
     groups: leagueGroups,
     isLoading: leagueGroupsLoading,
+    isFetching: leagueGroupsFetching,
     error: leagueGroupsError,
   } = useLeagueMatchGroups(leagueCategorySlug, statusFilter);
 
@@ -125,6 +129,7 @@ export function MarketGrid() {
   const {
     groups: homepageGroups,
     isLoading: homepageLoading,
+    isFetching: homepageFetching,
     error: homepageError,
   } = useHomepageMatchGroups(statusFilter, isHomepage);
 
@@ -209,33 +214,57 @@ export function MarketGrid() {
     }));
 
     const filterOutrightsForLeague = (slug: string) =>
-      outrightFeedItems.filter(
-        (item) =>
-          item.type === "group" &&
-          groupMatchesLeagueSlug(item.data.tags ?? [], slug),
-      );
-
-    const priorityOutrights = outrightFeedItems
-      .filter((item) => {
+      outrightFeedItems.filter((item) => {
         if (item.type !== "group") return false;
 
-        return HOMEPAGE_PRIORITY_LEAGUES.some((slug) =>
-          groupMatchesLeagueSlug(item.data.tags ?? [], slug),
-        );
-      })
-      .slice(0, 4);
+        if (LEAGUE_BY_SLUG[slug]) {
+          return groupMatchesLeagueSlug(item.data.tags ?? [], slug);
+        }
+
+        // TOP_LEAGUES without a LEAGUES registry entry use league-{id}.
+        if (slug.startsWith("league-")) {
+          const leagueId = Number(slug.slice("league-".length));
+          const outrightTag = (item.data.tags ?? []).find((tag) =>
+            tag.startsWith("outright-"),
+          );
+          const parsed = outrightTag ? parseOutrightTag(outrightTag) : null;
+
+          return parsed?.leagueId === leagueId;
+        }
+
+        return false;
+      });
+
+    // One winner market per featured league (PL → Bundesliga → Eredivisie → La Liga).
+    const featuredOutrights = HOMEPAGE_FEATURED_OUTRIGHT_LEAGUES.flatMap(
+      (slug) => filterOutrightsForLeague(slug).slice(0, 1),
+    );
 
     if (selectedCategory === "outrights") {
       let items = outrightFeedItems;
 
-      if (leagueFilter && LEAGUE_BY_SLUG[leagueFilter]) {
-        items = filterOutrightsForLeague(leagueFilter);
-      } else if (countryFilter) {
-        items = outrightFeedItems.filter(
+      if (countryFilter) {
+        items = items.filter(
           (item) =>
             item.type === "group" &&
             groupMatchesCountryTag(item.data.tags ?? [], countryFilter),
         );
+      }
+
+      if (leagueFilter) {
+        const leagueItems = filterOutrightsForLeague(leagueFilter);
+        const leagueIds = new Set(
+          leagueItems.flatMap((item) =>
+            item.type === "group" ? [item.data.groupId] : [],
+          ),
+        );
+
+        items = countryFilter
+          ? items.filter(
+              (item) =>
+                item.type === "group" && leagueIds.has(item.data.groupId),
+            )
+          : leagueItems;
       }
 
       return {
@@ -250,10 +279,13 @@ export function MarketGrid() {
       };
     }
 
+    const matchesEnabled = isMatchMarketsUiEnabled();
+
     if (leagueCategorySlug) {
       const leagueOutrights = filterOutrightsForLeague(leagueCategorySlug);
       const matches =
-        leagueExpanded ?
+        !matchesEnabled ? []
+        : leagueExpanded ?
           leagueFeedItems
         : leagueFeedItems.slice(0, LEAGUE_MATCH_PREVIEW);
 
@@ -268,17 +300,16 @@ export function MarketGrid() {
 
     if (isHomepage) {
       return {
-        mainGridItems: homepageFeedItems,
-        outrightSectionItems:
-          priorityOutrights.length > 0 ?
-            priorityOutrights
-          : outrightFeedItems.slice(0, 4),
+        mainGridItems: matchesEnabled ? homepageFeedItems : [],
+        outrightSectionItems: featuredOutrights,
         outrightSectionTitle: "Long-term odds",
         outrightViewAllHref: "/?category=outrights",
       };
     }
 
-    const matchItems = filteredItems.filter((item) => !isOutrightFeedItem(item));
+    const matchItems =
+      !matchesEnabled ? []
+      : filteredItems.filter((item) => !isOutrightFeedItem(item));
 
     return {
       mainGridItems: matchItems,
@@ -329,6 +360,8 @@ export function MarketGrid() {
     );
   }
 
+  const isOutrightsCategory = selectedCategory === "outrights";
+
   // Only block the whole grid on the first load — never flash empty skeletons
   // over existing cards (that caused the hang/flicker while paging).
   const feedLoading =
@@ -336,6 +369,7 @@ export function MarketGrid() {
     (Boolean(leagueCategorySlug) &&
       leagueGroupsLoading &&
       leagueFeedItems.length === 0) ||
+    (isOutrightsCategory && outrightsLoading && mainGridItems.length === 0) ||
     (useUnifiedFeedEnabled && isLoading && filteredItems.length === 0);
 
   if (feedLoading) {
@@ -378,9 +412,16 @@ export function MarketGrid() {
     leagueCategorySlug ? getLeagueName(leagueCategorySlug, locale) : null;
 
   const canShowMoreLeagueMatches =
+    isMatchMarketsUiEnabled() &&
     Boolean(leagueCategorySlug) &&
     !leagueExpanded &&
     leagueFeedItems.length > LEAGUE_MATCH_PREVIEW;
+
+  const stillScanning =
+    (isHomepage && homepageFetching && homepageFeedItems.length > 0) ||
+    (Boolean(leagueCategorySlug) &&
+      leagueGroupsFetching &&
+      leagueFeedItems.length > 0);
 
   const gridEmpty =
     isHomepage ?
@@ -389,6 +430,8 @@ export function MarketGrid() {
       mainGridItems.length === 0 &&
       !leagueGroupsLoading &&
       outrightSectionItems.length === 0
+    : isOutrightsCategory ?
+      mainGridItems.length === 0 && !outrightsLoading
     : filteredItems.length === 0 && !hasNextPage;
 
   const outrightSection = showOutrightSection ? (
@@ -423,6 +466,20 @@ export function MarketGrid() {
         <div className="flex items-center gap-2">
           <MarketStatusFilter value={statusFilter} onChange={setStatusFilter} />
         </div>
+      )}
+
+      {isOutrightsCategory && countryFilter ?
+        <CountryOutrightTabs
+          activeLeagueSlug={leagueFilter}
+          countrySlug={countryFilter}
+          groups={outrightGroups}
+        />
+      : null}
+
+      {stillScanning && (
+        <p className="px-0.5 text-xs font-medium text-default-400">
+          Loading more markets…
+        </p>
       )}
 
       {gridEmpty ? (

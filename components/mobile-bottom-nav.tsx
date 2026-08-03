@@ -63,7 +63,7 @@ function MobileBottomNavInner() {
             onClick={() => setLeaguesOpen(true)}
           >
             <TabIcon active={leaguesOpen}>☰</TabIcon>
-            Leagues
+            Countries
           </button>
 
           <NextLink
@@ -91,7 +91,7 @@ function MobileBottomNavInner() {
           {() => (
             <>
               <DrawerHeader className="border-b border-white/[0.06] pb-3">
-                Browse leagues
+                Browse countries
               </DrawerHeader>
               <DrawerBody className="max-h-[70vh] overflow-y-auto px-1 py-2 [scrollbar-width:thin]">
                 <Suspense>

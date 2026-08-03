@@ -72,6 +72,90 @@ const COUNTRY_LABEL_OVERRIDES: Record<string, string> = {
   International: "International",
 };
 
+/** ISO 3166-1 alpha-2 (or special) for flag helpers — keyed by country slug. */
+const COUNTRY_FLAG_CODE: Record<string, string> = {
+  algeria: "dz",
+  argentina: "ar",
+  australia: "au",
+  austria: "at",
+  belgium: "be",
+  bolivia: "bo",
+  brazil: "br",
+  bulgaria: "bg",
+  cameroon: "cm",
+  canada: "ca",
+  chile: "cl",
+  china: "cn",
+  colombia: "co",
+  croatia: "hr",
+  "czech-republic": "cz",
+  denmark: "dk",
+  netherlands: "nl",
+  ecuador: "ec",
+  egypt: "eg",
+  england: "gb-eng",
+  finland: "fi",
+  france: "fr",
+  germany: "de",
+  ghana: "gh",
+  greece: "gr",
+  guatemala: "gt",
+  honduras: "hn",
+  hungary: "hu",
+  india: "in",
+  indonesia: "id",
+  ireland: "ie",
+  israel: "il",
+  italy: "it",
+  japan: "jp",
+  kazakhstan: "kz",
+  kenya: "ke",
+  "south-korea": "kr",
+  mexico: "mx",
+  morocco: "ma",
+  nigeria: "ng",
+  norway: "no",
+  paraguay: "py",
+  peru: "pe",
+  poland: "pl",
+  portugal: "pt",
+  qatar: "qa",
+  romania: "ro",
+  russia: "ru",
+  "saudi-arabia": "sa",
+  scotland: "gb-sct",
+  serbia: "rs",
+  slovakia: "sk",
+  slovenia: "si",
+  "south-africa": "za",
+  "south-america": "un",
+  spain: "es",
+  sweden: "se",
+  switzerland: "ch",
+  thailand: "th",
+  tunisia: "tn",
+  turkey: "tr",
+  "united-arab-emirates": "ae",
+  ukraine: "ua",
+  uruguay: "uy",
+  "united-states": "us",
+  venezuela: "ve",
+  vietnam: "vn",
+  wales: "gb-wls",
+  europe: "eu",
+  international: "un",
+};
+
+/** Regional emoji for non-ISO / UK nation flags. */
+const COUNTRY_FLAG_EMOJI: Record<string, string> = {
+  england: "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+  scotland: "🏴󠁧󠁢󠁳󠁣󠁴󠁿",
+  wales: "🏴󠁧󠁢󠁷󠁬󠁳󠁿",
+  europe: "🇪🇺",
+  "south-america": "🌎",
+  international: "🌐",
+};
+
 function humanizeCountryToken(token: string): string {
   return token
     .split("-")
@@ -101,4 +185,37 @@ export function countryTagToSlug(countryTag: string): string {
 /** Canonical country key for merging duplicate nationality tags in nav. */
 export function countryTagToKey(countryTag: string): string {
   return countryTagToSlug(countryTag);
+}
+
+function isoToFlagEmoji(iso2: string): string {
+  const code = iso2.toUpperCase();
+
+  if (code.length !== 2) return "";
+
+  const first = code.codePointAt(0);
+  const second = code.codePointAt(1);
+
+  if (first == null || second == null) return "";
+
+  return String.fromCodePoint(127397 + first, 127397 + second);
+}
+
+/** Flag emoji for a country slug (sidebar / UI). */
+export function countrySlugToFlagEmoji(countrySlug: string): string {
+  if (COUNTRY_FLAG_EMOJI[countrySlug]) {
+    return COUNTRY_FLAG_EMOJI[countrySlug];
+  }
+
+  const code = COUNTRY_FLAG_CODE[countrySlug];
+
+  if (!code || code.includes("-") || code === "un") {
+    return "🏳️";
+  }
+
+  return isoToFlagEmoji(code) || "🏳️";
+}
+
+/** flagcdn path code when an image is preferred over emoji. */
+export function countrySlugToFlagCdnCode(countrySlug: string): string | null {
+  return COUNTRY_FLAG_CODE[countrySlug] ?? null;
 }

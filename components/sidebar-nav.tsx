@@ -4,16 +4,11 @@ import { usePathname, useSearchParams } from "next/navigation";
 
 import { OutrightCountriesNav } from "@/components/sidebar/OutrightCountriesNav";
 import {
-  SidebarAccordion,
   SidebarLink,
   SidebarSection,
-  SidebarSubheading,
 } from "@/components/sidebar/SidebarAccordion";
 import { useBrand } from "@/features/brand";
-import {
-  getSidebarContentLinks,
-  getSidebarLeagueLinks,
-} from "@/config/sidebarNav";
+import { getSidebarContentLinks } from "@/config/sidebarNav";
 import type { BrandId } from "@/config/brandRouting";
 
 function isPathActive(pathname: string, href: string): boolean {
@@ -22,59 +17,33 @@ function isPathActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-/** Flush-left desktop navigation — leagues only, no per-market sub-links. */
+/** Flush-left desktop navigation — long-term countries (+ content). */
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void } = {}) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const category = searchParams.get("category");
-  const { brandId, locale } = useBrand();
+  const { brandId } = useBrand();
 
-  const leagues = getSidebarLeagueLinks(brandId as BrandId, locale);
   const contentLinks = getSidebarContentLinks(brandId as BrandId).filter(
     (link) => link.enabled !== false,
   );
 
   const isHomeActive = pathname === "/" && !category;
-  const matchCategoryActive =
-    category != null && category !== "outrights";
+  const isOutrightsActive = pathname === "/" && category === "outrights";
 
   return (
     <nav aria-label="Site navigation" className="flex flex-col">
-      <SidebarSection title="Live">
+      <SidebarSection title="Browse">
         <SidebarLink
-          active={isHomeActive}
-          href="/"
-          label="All matches"
+          active={isHomeActive || isOutrightsActive}
+          href="/?category=outrights"
+          label="All long-term"
           onNavigate={onNavigate}
         />
       </SidebarSection>
 
-      <SidebarSection title="Football">
-        <SidebarAccordion
-          defaultOpen
-          forceOpen={
-            matchCategoryActive ||
-            category === "outrights" ||
-            leagues.some((league) => category === league.slug)
-          }
-          id="sports-football"
-          label="Football"
-          level={0}
-        >
-          <SidebarSubheading>Top leagues</SidebarSubheading>
-          {leagues.map((league) => (
-            <SidebarLink
-              key={league.slug}
-              active={pathname === "/" && category === league.slug}
-              href={league.href}
-              label={league.label}
-              onNavigate={onNavigate}
-              sub
-            />
-          ))}
-
-          <OutrightCountriesNav onNavigate={onNavigate} />
-        </SidebarAccordion>
+      <SidebarSection title="Countries">
+        <OutrightCountriesNav onNavigate={onNavigate} />
       </SidebarSection>
 
       {contentLinks.length > 0 && (

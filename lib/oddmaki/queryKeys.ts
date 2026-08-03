@@ -116,8 +116,8 @@ export const queryKeys = {
 
   marketSearch: {
     all: ["marketSearch"] as const,
-    index: (venueId?: string, locale?: string) =>
-      ["marketSearch", "index", venueId, locale] as const,
+    index: (venueId?: string, locale?: string, matchMode?: string) =>
+      ["marketSearch", "index", venueId, locale, matchMode] as const,
   },
 
   fixtureTeams: {
