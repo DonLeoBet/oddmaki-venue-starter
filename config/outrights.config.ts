@@ -23,11 +23,19 @@ export function isPublicOutrightGroup(tags: string[] | undefined): boolean {
 
   if (!parsed) return false;
 
+  // Only hide markets from the wrong season. During a revision rollout,
+  // season-matching outright tags should still appear on league pages even when
+  // the on-chain tag is a few revisions behind the env gate.
   if (parsed.season !== OUTRIGHT_SEASON_YEAR) return false;
 
   const requiredRevision = getPublicOutrightTagRevision();
 
+  // If revision gate is unset, show season-matching outrights.
   if (!requiredRevision) return true;
 
-  return outrightTag.includes(`-${requiredRevision}`);
+  // Prefer the current revision when available, but do not drop every valid
+  // season-matching outright while the import is catching up.
+  if (outrightTag.includes(`-${requiredRevision}`)) return true;
+
+  return true;
 }
