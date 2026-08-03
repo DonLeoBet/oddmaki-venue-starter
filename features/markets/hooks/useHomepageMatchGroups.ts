@@ -3,7 +3,7 @@
 import type { StatusFilter } from "../components/MarketStatusFilter";
 
 import { useMemo } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
 import { isFeaturedMatch } from "../utils/featuredMatches";
 import type { UnifiedFeedItem } from "../types";
@@ -18,7 +18,6 @@ import {
 import { fetchHomepageMatchGroupsFromUnifiedFeed } from "@/lib/markets/fetchMatchGroups";
 import { filterMatchGroupsForFeed } from "@/lib/markets/filterMatchGroups";
 import { parseLeagueSlugFromTags } from "@/config/leagues";
-import type { FormattedMarketGroup } from "@/features/market-groups/types";
 import { isMatchMarketsUiEnabled } from "@/config/matchMarkets.config";
 
 const HOMEPAGE_MAX = 24;
@@ -33,7 +32,6 @@ export function useHomepageMatchGroups(
 ) {
   const client = useOddMakiClient();
   const venueId = getVenueId();
-  const queryClient = useQueryClient();
   const queryKey = queryKeys.homepageMatchGroups.list(venueId?.toString());
   const matchesEnabled = isMatchMarketsUiEnabled();
 
@@ -44,9 +42,6 @@ export function useHomepageMatchGroups(
         client,
         venueId!,
         HOMEPAGE_FETCH_TARGET,
-        (partial) => {
-          queryClient.setQueryData<FormattedMarketGroup[]>(queryKey, partial);
-        },
       ),
     enabled:
       enabled &&

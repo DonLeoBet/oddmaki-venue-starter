@@ -4,7 +4,7 @@ import type { StatusFilter } from "../components/MarketStatusFilter";
 import type { FormattedMarketGroup } from "@/features/market-groups/types";
 
 import { useMemo } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
 import { useOddMakiClient } from "@/lib/oddmaki/hooks";
 import { getVenueId } from "@/config/venue.config";
@@ -12,14 +12,13 @@ import { queryKeys } from "@/lib/oddmaki/queryKeys";
 import { fetchLeagueMatchGroupsFromUnifiedFeed } from "@/lib/markets/fetchMatchGroups";
 import { isMatchMarketsUiEnabled } from "@/config/matchMarkets.config";
 
-/** League fetch streams partials so first matches paint without a hang/flicker. */
+/** League category match fetch — disabled while single-match markets are retired. */
 export function useLeagueMatchGroups(
   leagueSlug: string | null,
   statusFilter: StatusFilter,
 ) {
   const client = useOddMakiClient();
   const venueId = getVenueId();
-  const queryClient = useQueryClient();
   const matchesEnabled = isMatchMarketsUiEnabled();
   const queryKey = queryKeys.leagueMatchGroups.list(
     venueId?.toString(),
@@ -36,9 +35,6 @@ export function useLeagueMatchGroups(
         leagueSlug!,
         statusFilter,
         4,
-        (partial) => {
-          queryClient.setQueryData<FormattedMarketGroup[]>(queryKey, partial);
-        },
       ),
     enabled:
       matchesEnabled &&
