@@ -18,6 +18,14 @@ export const HOMEPAGE_PRIORITY_LEAGUES = [
   "super-lig",
 ] as const;
 
+/** Homepage Long-term odds first row — England PL, Bundesliga, Eredivisie, La Liga. */
+export const HOMEPAGE_FEATURED_OUTRIGHT_LEAGUES = [
+  "premier-league",
+  "bundesliga",
+  "eredivisie",
+  "la-liga",
+] as const;
+
 /** Cap how many cards smaller leagues can take on the homepage. */
 export const HOMEPAGE_MINOR_LEAGUE_MAX = 1;
 
