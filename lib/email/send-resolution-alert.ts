@@ -1,4 +1,7 @@
+export type ResolutionAlertKind = "assertion" | "dispute";
+
 export interface ResolutionAlertPayload {
+  kind: ResolutionAlertKind;
   assertionId: string;
   marketId: string;
   marketQuestion: string;
@@ -10,12 +13,33 @@ export interface ResolutionAlertPayload {
 }
 
 function alertSubject(payload: ResolutionAlertPayload): string {
+  if (payload.kind === "dispute") {
+    return `[DISPUTE] ${payload.proposedOutcome} — ${payload.marketQuestion.slice(0, 60)}`;
+  }
+
   const flag = payload.isForeignAsserter ? "[ACTION NEEDED] " : "";
 
   return `${flag}Resolution asserted: ${payload.proposedOutcome} — ${payload.marketQuestion.slice(0, 60)}`;
 }
 
 function alertBody(payload: ResolutionAlertPayload): string {
+  if (payload.kind === "dispute") {
+    return [
+      "An assertion on this venue was disputed and escalated to UMA DVM.",
+      "Review promptly — settlement is paused until the vote completes (~48h typical).",
+      "",
+      `Market: ${payload.marketQuestion}`,
+      `Market ID: ${payload.marketId}`,
+      `Proposed outcome: ${payload.proposedOutcome}`,
+      `Original asserter: ${payload.asserter}`,
+      `Assertion ID: ${payload.assertionId}`,
+      "",
+      payload.matchUrl ? `Open match: ${payload.matchUrl}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+  }
+
   const lines = [
     payload.isForeignAsserter ?
       "Someone other than your operator wallet asserted this market. Review within the 24h challenge window."

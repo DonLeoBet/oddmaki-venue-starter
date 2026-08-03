@@ -5,17 +5,22 @@ import { Card, CardHeader, CardBody } from "@heroui/card";
 import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
 import { Skeleton } from "@heroui/skeleton";
-import { Tooltip } from "@heroui/tooltip";
 import { useAccount } from "wagmi";
 
-import { MATCH_RESOLUTION_COPY } from "@/config/resolution.config";
+import { MATCH_RESOLUTION_COPY, PUBLIC_LIFECYCLE_LABELS } from "@/config/resolution.config";
+import { derivePublicLifecycleState } from "@/features/football/components/MarketLifecycleBanner";
+import { useMatchFootballContext } from "@/features/football/hooks/useMatchFootballContext";
+import { kickoffUnixFromTags } from "@/lib/football/kickoff-display";
+import {
+  fixtureIdFromTag,
+  isFixtureTag,
+} from "@/lib/football/map-fixture-to-market-group";
 
 import { useMarketStatus } from "../hooks/useMarketStatus";
 import { useSettleAssertion } from "../hooks/useSettleAssertion";
 import { useReportResolution } from "../hooks/useReportResolution";
 import { useDisputeAssertion } from "../hooks/useDisputeAssertion";
 
-import { ResolutionTimeline } from "./ResolutionTimeline";
 import { AssertOutcomeForm } from "./AssertOutcomeForm";
 
 interface ResolutionPanelProps {
@@ -25,6 +30,10 @@ interface ResolutionPanelProps {
   description?: string;
   /** When true, renders content without Card wrapper (for embedding in Accordion, etc.) */
   bare?: boolean;
+  /** Show full UMA assert/settle tooling (operators / advanced). Default: compact status. */
+  advanced?: boolean;
+  /** Fixture tags — used to map Active vs Closed before an assertion exists. */
+  groupTags?: string[];
 }
 
 function formatCountdown(expirationTime: number): string {
@@ -41,53 +50,30 @@ function formatCountdown(expirationTime: number): string {
   return `${minutes}m`;
 }
 
-function shortenHash(hash: string): string {
-  if (hash.length < 14) return hash;
-
-  return `${hash.slice(0, 10)}...${hash.slice(-8)}`;
-}
-
-// USDC bond formatting (6 decimals). Mirrors AssertOutcomeForm — kept inline to
-// avoid coupling to that component's internals.
 function formatBondUSDC(bond: bigint): string {
   return (Number(bond) / 1e6).toFixed(2);
 }
 
-function CopyableId({ value, label }: { value: string; label: string }) {
-  const [copied, setCopied] = useState(false);
+function fixtureIdFromTags(tags: string[] | undefined): number | null {
+  if (!tags) return null;
 
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // ignore clipboard errors
-    }
-  };
+  for (const tag of tags) {
+    if (!isFixtureTag(tag)) continue;
 
-  return (
-    <div className="flex items-center gap-2">
-      <span className="text-sm text-default-500">{label}:</span>
-      <Tooltip content={copied ? "Copied!" : "Click to copy"}>
-        <button
-          className="text-xs font-mono text-default-600 hover:text-foreground transition-colors"
-          type="button"
-          onClick={handleCopy}
-        >
-          {shortenHash(value)}
-        </button>
-      </Tooltip>
-    </div>
-  );
+    return fixtureIdFromTag(tag);
+  }
+
+  return null;
 }
 
 export function ResolutionPanel({
   marketId,
   outcomes,
-  title = "Resolution",
+  title = "Status",
   description,
   bare = false,
+  advanced = false,
+  groupTags,
 }: ResolutionPanelProps) {
   const { isConnected } = useAccount();
   const { data: status, isLoading } = useMarketStatus(marketId);
@@ -97,9 +83,29 @@ export function ResolutionPanel({
     useReportResolution(marketId);
   const { disputeAssertion, isLoading: isDisputing } =
     useDisputeAssertion(marketId);
+  const [showAdvanced, setShowAdvanced] = useState(advanced);
+
+  const hasFixture = fixtureIdFromTags(groupTags) != null;
+  const { data: football } = useMatchFootballContext(
+    hasFixture ? groupTags : undefined,
+  );
 
   const isDisputed = status?.assertionDetails?.isDisputed ?? false;
   const disputeBond = status?.assertionDetails?.bond;
+
+  const publicState = derivePublicLifecycleState({
+    fixtureStatus: football?.fixtureStatus ?? null,
+    kickoffUnix: kickoffUnixFromTags(groupTags ?? []),
+    resolutionPhase: status?.phase,
+    marketResolved: status?.phase === "RESOLVED",
+  });
+
+  const statusColor =
+    publicState === "resolved" ? "success"
+    : publicState === "challenged" ? "secondary"
+    : publicState === "pending" ? "primary"
+    : publicState === "closed" ? "default"
+    : "success";
 
   const body =
     isLoading || !status ? (
@@ -108,204 +114,142 @@ export function ResolutionPanel({
         <Skeleton className="h-10 w-full rounded-lg" />
       </div>
     ) : (
-      <>
-        {/* Vertical timeline (hidden when no assertion) */}
-        <ResolutionTimeline
-          assertedOutcome={status.assertion.outcome}
-          isDisputed={isDisputed}
-          phase={status.phase}
-          winningOutcome={status.resolution.winningOutcome}
-        />
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-2">
+          <Chip color={statusColor} size="sm" variant="flat">
+            {PUBLIC_LIFECYCLE_LABELS[publicState]}
+          </Chip>
+          {publicState === "challenged" &&
+            status.assertionDetails &&
+            !isDisputed && (
+              <span className="text-xs text-default-400">
+                Ends {formatCountdown(status.assertionDetails.expirationTime)}
+              </span>
+            )}
+        </div>
 
-        {/* Assertion identifier — copyable for inspection on UMA Oracle */}
-        {status.assertion.assertionId && (
-          <div className="mt-4">
-            <CopyableId
-              label="Assertion ID"
-              value={status.assertion.assertionId}
-            />
-          </div>
+        {publicState === "active" && (
+          <p className="text-xs text-default-500 leading-relaxed">
+            Trading is open. Closes when the match is finished; result follows
+            automatically (usually within {MATCH_RESOLUTION_COPY.typicalProposal}
+            ), then a {MATCH_RESOLUTION_COPY.challengeWindow} challenge window.
+          </p>
         )}
 
-        {/* ACTIVE_NO_ASSERTION — show assert form */}
-        {status.phase === "ACTIVE_NO_ASSERTION" && (
-          <>
-            <p className="text-xs text-default-500 leading-relaxed mb-2">
-              Results are usually proposed within{" "}
-              {MATCH_RESOLUTION_COPY.typicalProposal} of full time. The on-chain
-              challenge window is {MATCH_RESOLUTION_COPY.challengeWindow}; if
-              unchallenged, the market can be settled after that period.
-            </p>
-            <AssertOutcomeForm
-              liveness={status.question.liveness}
-              marketId={marketId}
-              outcomes={outcomes}
-              requiredBond={status.question.requiredBond}
-            />
-          </>
+        {publicState === "closed" && (
+          <p className="text-xs text-default-500 leading-relaxed">
+            Trading closed. Waiting for the official result proposal.
+          </p>
         )}
 
-        {/* DISPUTED, DVM not yet resolved — escalation explainer */}
-        {isDisputed &&
-          status.phase === "ASSERTION_PENDING" &&
+        {publicState === "challenged" && !isDisputed && (
+          <p className="text-xs text-default-500 leading-relaxed">
+            Result proposed. Anyone can dispute during the challenge window by
+            posting a matching bond.
+          </p>
+        )}
+
+        {publicState === "challenged" && isDisputed && (
+          <p className="text-xs text-default-500 leading-relaxed">
+            Disputed — escalated to UMA DVM (typically ~48h). Continues to
+            Pending once voting finishes.
+          </p>
+        )}
+
+        {publicState === "pending" && (
+          <p className="text-xs text-default-500 leading-relaxed">
+            Challenge window complete. Settlement runs automatically; you can
+            also finalize manually below if needed.
+          </p>
+        )}
+
+        {publicState === "resolved" && (
+          <p className="text-xs text-default-500 leading-relaxed">
+            Market resolved. Use redeem to claim winnings.
+          </p>
+        )}
+
+        {publicState === "challenged" &&
+          !isDisputed &&
           status.assertionDetails && (
-            <div className="flex flex-col gap-3 mt-4">
-              <CopyableId
-                label="Asserter"
-                value={status.assertionDetails.asserter}
-              />
-              <CopyableId
-                label="Disputer"
-                value={status.assertionDetails.disputer}
-              />
-              <div className="rounded-lg border border-secondary-200 bg-secondary-50/40 p-3">
-                <p className="text-sm text-secondary-700 font-medium mb-1">
-                  Assertion disputed
-                </p>
-                <p className="text-xs text-default-600 leading-relaxed">
-                  This assertion has been escalated to UMA&apos;s Data
-                  Verification Mechanism (DVM). UMA tokenholders will vote on
-                  the correct outcome and the result will be returned to the
-                  Optimistic Oracle. Once the DVM resolves (typically ~48h),
-                  anyone can settle the assertion to finalize this market.
-                </p>
-              </div>
-            </div>
+            <Button
+              className="w-full"
+              color="secondary"
+              isDisabled={!isConnected || !status.assertion.assertionId}
+              isLoading={isDisputing}
+              size="sm"
+              variant="flat"
+              onPress={() => {
+                if (status.assertion.assertionId) {
+                  disputeAssertion(status.assertion.assertionId);
+                }
+              }}
+            >
+              {!isConnected
+                ? "Connect to dispute"
+                : disputeBond
+                  ? `Dispute ($${formatBondUSDC(disputeBond)})`
+                  : "Dispute"}
+            </Button>
           )}
 
-        {/* DISPUTED, DVM resolved — show settle button */}
-        {isDisputed &&
-          status.phase === "ASSERTION_EXPIRED" &&
-          status.assertionDetails && (
-            <div className="flex flex-col gap-3 mt-4">
-              <CopyableId
-                label="Asserter"
-                value={status.assertionDetails.asserter}
-              />
-              <CopyableId
-                label="Disputer"
-                value={status.assertionDetails.disputer}
-              />
-              <div className="rounded-lg border border-secondary-200 bg-secondary-50/40 p-3">
-                <p className="text-sm text-secondary-700 font-medium mb-1">
-                  DVM resolved
-                </p>
-                <p className="text-xs text-default-600 leading-relaxed">
-                  UMA&apos;s DVM has returned a price for this dispute. Anyone
-                  can now settle the assertion to apply the DVM&apos;s outcome
-                  and finalize this market.
-                </p>
-              </div>
+        {publicState === "pending" && (
+          <div className="flex flex-col gap-2">
+            {status.phase === "ASSERTION_EXPIRED" && (
               <Button
                 className="w-full"
                 color="primary"
                 isDisabled={!isConnected || !status.assertion.assertionId}
                 isLoading={isSettling}
+                size="sm"
                 onPress={() => {
                   if (status.assertion.assertionId) {
                     settleAssertion(status.assertion.assertionId);
                   }
                 }}
               >
-                {!isConnected ? "Connect Wallet" : "Settle Assertion"}
+                {!isConnected ? "Connect wallet" : "Settle"}
               </Button>
-            </div>
-          )}
-
-        {/* ASSERTION_PENDING (undisputed) — countdown + details + dispute button */}
-        {status.phase === "ASSERTION_PENDING" &&
-          !isDisputed &&
-          status.assertionDetails && (
-            <div className="flex flex-col gap-3 mt-4">
-              <CopyableId
-                label="Asserter"
-                value={status.assertionDetails.asserter}
-              />
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-default-500">
-                  Challenge period ends:
-                </span>
-                <Chip color="primary" size="sm" variant="flat">
-                  {formatCountdown(status.assertionDetails.expirationTime)}
-                </Chip>
-              </div>
-              <p className="text-xs text-default-400">
-                The assertion is in its challenge period. If unchallenged, it
-                can be settled after expiration.
-              </p>
+            )}
+            {status.phase === "SETTLED_NOT_REPORTED" && (
               <Button
                 className="w-full"
                 color="primary"
-                isDisabled={!isConnected || !status.assertion.assertionId}
-                isLoading={isDisputing}
-                variant="flat"
+                isDisabled={!isConnected || !status.assertion.outcome}
+                isLoading={isReporting}
+                size="sm"
                 onPress={() => {
-                  if (status.assertion.assertionId) {
-                    disputeAssertion(status.assertion.assertionId);
+                  if (status.assertion.outcome) {
+                    reportResolution(status.assertion.outcome);
                   }
                 }}
               >
-                {!isConnected
-                  ? "Connect Wallet"
-                  : disputeBond
-                    ? `Dispute Assertion (Bond: $${formatBondUSDC(disputeBond)})`
-                    : "Dispute Assertion"}
+                {!isConnected ? "Connect wallet" : "Finalize"}
               </Button>
-              <p className="text-[11px] text-default-400 leading-relaxed">
-                Disputing escalates to UMA&apos;s DVM. You must post a matching
-                bond. If the DVM agrees with you, the asserter&apos;s bond is
-                forfeited and you are reimbursed plus a share of the
-                loser&apos;s bond.
-              </p>
-            </div>
-          )}
-
-        {/* ASSERTION_EXPIRED (undisputed) — show settle button */}
-        {status.phase === "ASSERTION_EXPIRED" && !isDisputed && (
-          <div className="flex flex-col gap-3 mt-4">
-            <p className="text-sm text-default-500">
-              The challenge period has expired. Anyone can now settle the
-              assertion.
-            </p>
-            <Button
-              className="w-full"
-              color="primary"
-              isDisabled={!isConnected || !status.assertion.assertionId}
-              isLoading={isSettling}
-              onPress={() => {
-                if (status.assertion.assertionId) {
-                  settleAssertion(status.assertion.assertionId);
-                }
-              }}
-            >
-              {!isConnected ? "Connect Wallet" : "Settle Assertion"}
-            </Button>
+            )}
           </div>
         )}
 
-        {/* SETTLED_NOT_REPORTED — show report button */}
-        {status.phase === "SETTLED_NOT_REPORTED" && (
-          <div className="flex flex-col gap-3 mt-4">
-            <p className="text-sm text-default-500">
-              The assertion has been settled. Report the resolution to the CTF
-              to finalize the market.
-            </p>
-            <Button
-              className="w-full"
-              color="primary"
-              isDisabled={!isConnected || !status.assertion.outcome}
-              isLoading={isReporting}
-              onPress={() => {
-                if (status.assertion.outcome) {
-                  reportResolution(status.assertion.outcome);
-                }
-              }}
+        {(publicState === "active" || publicState === "closed") && (
+          <>
+            <button
+              className="self-start text-[11px] text-default-400 underline-offset-2 hover:underline"
+              type="button"
+              onClick={() => setShowAdvanced((value) => !value)}
             >
-              {!isConnected ? "Connect Wallet" : "Report Resolution"}
-            </Button>
-          </div>
+              {showAdvanced ? "Hide manual tools" : "Advanced / manual resolve"}
+            </button>
+            {showAdvanced && (
+              <AssertOutcomeForm
+                liveness={status.question.liveness}
+                marketId={marketId}
+                outcomes={outcomes}
+                requiredBond={status.question.requiredBond}
+              />
+            )}
+          </>
         )}
-      </>
+      </div>
     );
 
   if (bare) {
@@ -320,14 +264,14 @@ export function ResolutionPanel({
   }
 
   return (
-    <Card>
-      <CardHeader className="flex-col items-start">
-        <h2 className="text-lg font-semibold">{title}</h2>
+    <Card className="border border-default-100/40">
+      <CardHeader className="flex-col items-start pb-1">
+        <h2 className="text-base font-semibold">{title}</h2>
         {description && (
           <p className="text-sm text-default-400 mt-1">{description}</p>
         )}
       </CardHeader>
-      <CardBody>{body}</CardBody>
+      <CardBody className="pt-2">{body}</CardBody>
     </Card>
   );
 }

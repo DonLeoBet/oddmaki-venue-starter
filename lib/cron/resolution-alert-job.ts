@@ -21,6 +21,10 @@ const ASSERTION_CREATED = parseAbiItem(
   "event AssertionCreated(bytes32 indexed assertionId, bytes32 indexed questionId, string outcome, address asserter)",
 );
 
+const ASSERTION_DISPUTED = parseAbiItem(
+  "event AssertionDisputed(bytes32 indexed assertionId)",
+);
+
 interface MarketByQuestionRow {
   marketId: string;
   question: string;
@@ -60,7 +64,7 @@ async function fetchMarketByQuestionId(
   return json.data?.markets?.[0] ?? null;
 }
 
-function decodeAssertionLog(log: Log): {
+function decodeAssertionCreatedLog(log: Log): {
   assertionId: string;
   questionId: string;
   outcome: string;
@@ -94,6 +98,25 @@ function decodeAssertionLog(log: Log): {
   }
 }
 
+function decodeAssertionDisputedLog(log: Log): { assertionId: string } | null {
+  if (log.topics.length < 2) return null;
+
+  try {
+    const decoded = decodeEventLog({
+      abi: [ASSERTION_DISPUTED],
+      eventName: "AssertionDisputed",
+      topics: log.topics as [`0x${string}`, ...`0x${string}`[]],
+      data: log.data,
+    });
+
+    const args = decoded.args as { assertionId: `0x${string}` };
+
+    return { assertionId: args.assertionId };
+  } catch {
+    return null;
+  }
+}
+
 function resolveOperatorAddress(): string | undefined {
   const explicit = process.env.RESOLUTION_OPERATOR_ADDRESS?.trim();
 
@@ -106,10 +129,28 @@ function resolveOperatorAddress(): string | undefined {
   return mnemonicToAccount(mnemonic).address.toLowerCase();
 }
 
+async function isVenueMarket(
+  marketId: string,
+  venueId: bigint,
+  publicClient: ReturnType<typeof getPublicClient>,
+): Promise<boolean> {
+  const registry = (await publicClient.readContract({
+    address: DIAMOND_ADDRESS,
+    abi: MarketsFacetABI,
+    functionName: "getMarketRegistryData",
+    args: [BigInt(marketId)],
+  })) as { venueId?: bigint };
+
+  if (registry.venueId === undefined) return true;
+
+  return registry.venueId === venueId;
+}
+
 export interface ResolutionAlertSummary {
   venueId: string;
   scannedBlocks: string;
   assertionsFound: number;
+  disputesFound: number;
   emailsSent: number;
   skippedDuplicate: number;
   foreignAssertions: number;
@@ -140,12 +181,20 @@ export async function runResolutionAlertJob(): Promise<ResolutionAlertSummary> {
   const fromBlock =
     latestBlock > LOOKBACK_BLOCKS ? latestBlock - LOOKBACK_BLOCKS : BigInt(0);
 
-  const logs = await publicClient.getLogs({
-    address: oracleAddress,
-    event: ASSERTION_CREATED,
-    fromBlock,
-    toBlock: latestBlock,
-  });
+  const [createdLogs, disputedLogs] = await Promise.all([
+    publicClient.getLogs({
+      address: oracleAddress,
+      event: ASSERTION_CREATED,
+      fromBlock,
+      toBlock: latestBlock,
+    }),
+    publicClient.getLogs({
+      address: oracleAddress,
+      event: ASSERTION_DISPUTED,
+      fromBlock,
+      toBlock: latestBlock,
+    }),
+  ]);
 
   const operator = resolveOperatorAddress();
   const siteOrigin = `https://${BRAND_CONFIG.domain.replace(/^https?:\/\//, "")}`;
@@ -153,15 +202,16 @@ export async function runResolutionAlertJob(): Promise<ResolutionAlertSummary> {
   const summary: ResolutionAlertSummary = {
     venueId: venueId.toString(),
     scannedBlocks: `${fromBlock}-${latestBlock}`,
-    assertionsFound: logs.length,
+    assertionsFound: createdLogs.length,
+    disputesFound: disputedLogs.length,
     emailsSent: 0,
     skippedDuplicate: 0,
     foreignAssertions: 0,
     errors: [],
   };
 
-  for (const log of logs) {
-    const decoded = decodeAssertionLog(log);
+  for (const log of createdLogs) {
+    const decoded = decodeAssertionCreatedLog(log);
 
     if (!decoded) continue;
 
@@ -183,14 +233,7 @@ export async function runResolutionAlertJob(): Promise<ResolutionAlertSummary> {
         continue;
       }
 
-      const registry = (await publicClient.readContract({
-        address: DIAMOND_ADDRESS,
-        abi: MarketsFacetABI,
-        functionName: "getMarketRegistryData",
-        args: [BigInt(market.marketId)],
-      })) as { venueId?: bigint };
-
-      if (registry.venueId !== undefined && registry.venueId !== venueId) {
+      if (!(await isVenueMarket(market.marketId, venueId, publicClient))) {
         continue;
       }
 
@@ -202,6 +245,7 @@ export async function runResolutionAlertJob(): Promise<ResolutionAlertSummary> {
       }
 
       await sendResolutionAlertEmail({
+        kind: "assertion",
         assertionId: decoded.assertionId,
         marketId: market.marketId,
         marketQuestion: market.question,
@@ -209,6 +253,72 @@ export async function runResolutionAlertJob(): Promise<ResolutionAlertSummary> {
         asserter: decoded.asserter,
         operatorAddress: operator,
         isForeignAsserter,
+        matchUrl: `${siteOrigin}/market/${market.marketId}`,
+      });
+
+      summary.emailsSent += 1;
+    } catch (error) {
+      summary.errors.push(
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+  }
+
+  for (const log of disputedLogs) {
+    const decoded = decodeAssertionDisputedLog(log);
+
+    if (!decoded) continue;
+
+    // Separate dedup key so dispute emails still fire after assertion alerts.
+    const notifyKey = `dispute:${decoded.assertionId}`;
+    const isNew = await markAssertionNotified(notifyKey);
+
+    if (!isNew) {
+      summary.skippedDuplicate += 1;
+      continue;
+    }
+
+    try {
+      const assertion = await client.uma.getAssertionData(
+        decoded.assertionId as `0x${string}`,
+      );
+      const market = await fetchMarketByQuestionId(
+        assertion.questionId,
+        subgraphUrl,
+      );
+
+      if (!market) {
+        summary.errors.push(
+          `No market for disputed assertion ${decoded.assertionId}`,
+        );
+        continue;
+      }
+
+      if (!(await isVenueMarket(market.marketId, venueId, publicClient))) {
+        continue;
+      }
+
+      let asserter = "unknown";
+
+      try {
+        const details = await client.uma.getAssertionDetails(
+          decoded.assertionId as `0x${string}`,
+        );
+
+        asserter = details.asserter;
+      } catch {
+        // Asserter is nice-to-have for the email body.
+      }
+
+      await sendResolutionAlertEmail({
+        kind: "dispute",
+        assertionId: decoded.assertionId,
+        marketId: market.marketId,
+        marketQuestion: market.question,
+        proposedOutcome: assertion.outcome,
+        asserter,
+        operatorAddress: operator,
+        isForeignAsserter: false,
         matchUrl: `${siteOrigin}/market/${market.marketId}`,
       });
 

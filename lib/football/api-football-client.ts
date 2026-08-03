@@ -147,6 +147,16 @@ export async function fetchFixturesByLeagueDateRange(params: {
   return payload.response ?? [];
 }
 
+export async function fetchFixtureById(
+  fixtureId: number,
+): Promise<ApiFootballFixturesResponse["response"][number] | null> {
+  const payload = await apiFootballGet<ApiFootballFixturesResponse>("/fixtures", {
+    id: fixtureId,
+  });
+
+  return payload.response?.[0] ?? null;
+}
+
 export interface ApiFootballTeamRow {
   team: {
     id: number;
