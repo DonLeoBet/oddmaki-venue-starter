@@ -28,10 +28,9 @@ type FeedTab = "futures" | "matches";
 const FUTURE_PHRASES = [
   "win the",
   "winning the",
-  "winner of",
+  "winner",
   "winners of",
-  "champions of",
-  "champion of",
+  "champion",
   "championship",
   "top scorer",
   "top goalscorer",
@@ -69,23 +68,27 @@ function getMarketText(item: UnifiedFeedItem): string {
 
 function isLongTermMarket(item: UnifiedFeedItem): boolean {
   const text = getMarketText(item).toLowerCase();
+  const tags = (item.data.tags ?? []).map((t) => t.toLowerCase());
+
+  // Future signals take precedence — a title can legitimately list contenders
+  // with "vs" (e.g. "Premier League winner: Man City vs Arsenal vs ...")
+  // and still be a futures market.
+  if (FUTURE_PHRASES.some((p) => text.includes(p))) {
+    return true;
+  }
+
+  if (tags.some((t) => t === "futures" || t.includes("outright"))) {
+    return true;
+  }
 
   if (MATCH_PHRASES.some((p) => text.includes(p))) {
     return false;
   }
 
-  if (FUTURE_PHRASES.some((p) => text.includes(p))) {
-    return true;
-  }
-
-  const tags = (item.data.tags ?? []).map((t) => t.toLowerCase());
-
   return tags.some(
     (t) =>
-      t === "futures" ||
       t.includes("winner") ||
       t.includes("champion") ||
-      t.includes("outright") ||
       t.includes("season") ||
       t.includes("tournament") ||
       t.includes("long-term"),

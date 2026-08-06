@@ -3,6 +3,7 @@
 import type { FormattedMarketGroup, FormattedGroupOutcome } from "../types";
 
 import { Card, CardHeader, CardBody, CardFooter } from "@heroui/card";
+import { Avatar } from "@heroui/avatar";
 import NextLink from "next/link";
 
 import { MarketGroupStatus } from "../types";
@@ -57,8 +58,16 @@ function OutcomeRow({
   const pct = Math.round(outcome.probability);
 
   return (
-    <div className="flex items-center justify-between py-1.5 gap-3">
-      <span className="text-sm truncate flex-1">{outcome.name}</span>
+    <div className="flex items-center justify-between py-2 gap-3">
+      <div className="flex items-center gap-2 flex-1 min-w-0">
+        <Avatar
+          className="flex-shrink-0"
+          name={outcome.name}
+          radius="sm"
+          size="sm"
+        />
+        <span className="text-sm truncate">{outcome.name}</span>
+      </div>
       <div className="flex items-center gap-3 flex-shrink-0">
         {isResolved ? (
           <div className="flex items-center gap-1">
@@ -81,10 +90,10 @@ function OutcomeRow({
               {pct}%
             </span>
             <div className="flex gap-1">
-              <span className="text-xs rounded bg-primary/10 text-primary px-2 py-0.5">
+              <span className="text-xs rounded bg-primary/10 text-primary px-2 py-0.5 font-semibold">
                 Yes
               </span>
-              <span className="text-xs rounded bg-secondary/10 text-secondary px-2 py-0.5">
+              <span className="text-xs rounded bg-secondary/10 text-secondary px-2 py-0.5 font-semibold">
                 No
               </span>
             </div>
@@ -100,14 +109,14 @@ export function MarketGroupCard({ group }: MarketGroupCardProps) {
 
   return (
     <NextLink className="block" href={`/market/multi/${group.groupId}`}>
-      <Card className="w-full h-[180px] hover:scale-[1.02] transition-transform cursor-pointer">
+      <Card className="w-full h-auto min-h-[180px] hover:scale-[1.02] transition-transform cursor-pointer">
         <CardHeader className="flex flex-col items-start gap-2 pt-4 pb-0 flex-shrink-0">
           <h3 className="text-base font-semibold line-clamp-2">
             {group.marketQuestion}
           </h3>
         </CardHeader>
 
-        <CardBody className="gap-0 py-2 overflow-y-auto flex-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <CardBody className="gap-0 py-2 flex-1">
           <div className="flex flex-col divide-y divide-default-100">
             {group.outcomes.map((outcome) => (
               <OutcomeRow
