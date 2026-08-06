@@ -5,9 +5,11 @@ import type { UnifiedFeedItem } from "../types";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { Tabs, Tab } from "@heroui/tabs";
 
 import { useUnifiedFeed } from "../hooks/useUnifiedFeed";
 import { useFilterToggle } from "../hooks/useFilterToggle";
+import { MarketStatus } from "../types";
 
 import { MarketCard } from "./MarketCard";
 import { MarketSkeleton } from "./MarketSkeleton";
@@ -21,16 +23,91 @@ import {
 } from "@/features/price-market-series";
 import { CATEGORIES } from "@/config/tags.config";
 
+type FeedTab = "futures" | "matches";
+
+const FUTURE_PHRASES = [
+  "win the",
+  "winning the",
+  "winner of",
+  "winners of",
+  "champions of",
+  "champion of",
+  "championship",
+  "top scorer",
+  "top goalscorer",
+  "golden boot",
+  "futures",
+  "outright",
+  "tournament winner",
+  "league winner",
+  "season",
+  "to be relegated",
+  "to qualify",
+];
+
+const MATCH_PHRASES = [
+  " vs ",
+  " v ",
+  "1x2",
+  "matchday",
+  "round",
+  "fixture",
+  "week ",
+];
+
+function getMarketText(item: UnifiedFeedItem): string {
+  if (item.type === "standalone") {
+    return `${item.data.question} ${item.data.tags?.join(" ") ?? ""}`;
+  }
+
+  if (item.type === "group") {
+    return `${item.data.marketQuestion} ${item.data.tags?.join(" ") ?? ""} ${item.data.outcomes.map((o) => o.name).join(" ")}`;
+  }
+
+  return `${item.data.title} ${item.data.tags?.join(" ") ?? ""}`;
+}
+
+function isLongTermMarket(item: UnifiedFeedItem): boolean {
+  const text = getMarketText(item).toLowerCase();
+
+  if (MATCH_PHRASES.some((p) => text.includes(p))) {
+    return false;
+  }
+
+  if (FUTURE_PHRASES.some((p) => text.includes(p))) {
+    return true;
+  }
+
+  const tags = (item.data.tags ?? []).map((t) => t.toLowerCase());
+
+  return tags.some(
+    (t) =>
+      t === "futures" ||
+      t.includes("winner") ||
+      t.includes("champion") ||
+      t.includes("outright") ||
+      t.includes("season") ||
+      t.includes("tournament") ||
+      t.includes("long-term"),
+  );
+}
+
 export function MarketGrid() {
   const searchParams = useSearchParams();
   const selectedCategory = searchParams.get("category");
   const sortParam = searchParams.get("sort");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("Active");
+  const [activeTab, setActiveTab] = useState<FeedTab>("futures");
   const { showFilters } = useFilterToggle();
 
-  // Categories always use volume sort; only 'new' sort mode uses created
-  const sortBy =
-    sortParam === "new" && !selectedCategory ? "created" : "volume";
+  // Futures should surface the newest markets first so long-term markets with
+  // $0 volume are not buried. Matches keep the volume-based trending default.
+  const querySortBy: "created" | "volume" =
+    activeTab === "futures"
+      ? "created"
+      : sortParam === "new" && !selectedCategory
+        ? "created"
+        : "volume";
 
   const {
     data,
@@ -39,7 +116,7 @@ export function MarketGrid() {
     hasNextPage,
     fetchNextPage,
     isFetchingNextPage,
-  } = useUnifiedFeed(sortBy);
+  } = useUnifiedFeed(querySortBy);
 
   const items = useMemo(
     () => data?.pages.flatMap((page) => page.items) ?? [],
@@ -64,13 +141,30 @@ export function MarketGrid() {
       }
     }
 
-    // Filter by status
+    // Split by tab and status
     result = result.filter((item: UnifiedFeedItem) => {
-      return item.data.status === statusFilter;
+      const isFuture = isLongTermMarket(item);
+
+      if (activeTab === "futures" && !isFuture) return false;
+      if (activeTab === "matches" && isFuture) return false;
+
+      if (statusFilter === "Resolved") {
+        return item.data.status === MarketStatus.RESOLVED;
+      }
+
+      // Active filter: futures include DRAFT as UPCOMING; matches stay Active only
+      if (activeTab === "futures") {
+        return (
+          item.data.status === MarketStatus.ACTIVE ||
+          item.data.status === MarketStatus.DRAFT
+        );
+      }
+
+      return item.data.status === MarketStatus.ACTIVE;
     });
 
     return result;
-  }, [items, selectedCategory, statusFilter]);
+  }, [items, selectedCategory, activeTab, statusFilter]);
 
   // The subgraph no longer denormalizes a series' current window, so derive it
   // for the visible series in one batched query and pass it to each card.
@@ -118,6 +212,18 @@ export function MarketGrid() {
 
   return (
     <div className="flex flex-1 flex-col gap-4">
+      <Tabs
+        aria-label="Market feed"
+        fullWidth
+        selectedKey={activeTab}
+        size="md"
+        variant="underlined"
+        onSelectionChange={(key) => setActiveTab(key as FeedTab)}
+      >
+        <Tab key="futures" title="Futures" />
+        <Tab key="matches" title="Matches" />
+      </Tabs>
+
       {/* Filter controls — toggled via filter icon in category bar */}
       {showFilters && (
         <div className="flex items-center gap-2">

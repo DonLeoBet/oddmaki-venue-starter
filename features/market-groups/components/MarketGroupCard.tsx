@@ -96,6 +96,8 @@ function OutcomeRow({
 }
 
 export function MarketGroupCard({ group }: MarketGroupCardProps) {
+  const isUpcoming = group.status === MarketGroupStatus.DRAFT;
+
   return (
     <NextLink className="block" href={`/market/multi/${group.groupId}`}>
       <Card className="w-full h-[180px] hover:scale-[1.02] transition-transform cursor-pointer">
@@ -120,7 +122,11 @@ export function MarketGroupCard({ group }: MarketGroupCardProps) {
 
         <CardFooter className="flex-shrink-0">
           <div className="flex justify-between w-full text-xs text-default-400">
-            <span>{group.volumeFormatted} Vol.</span>
+            {isUpcoming ? (
+              <span className="text-warning font-semibold">UPCOMING</span>
+            ) : (
+              <span>{group.volumeFormatted} Vol.</span>
+            )}
           </div>
         </CardFooter>
       </Card>

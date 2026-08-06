@@ -109,6 +109,7 @@ export function MarketCard({ market, isDpm = false }: MarketCardProps) {
 
   const chancePercentage = Math.round(yes);
   const isResolved = market.status === MarketStatus.RESOLVED;
+  const isUpcoming = market.status === MarketStatus.DRAFT;
 
   return (
     <NextLink className="block" href={`/market/${market.marketId}`}>
@@ -155,7 +156,9 @@ export function MarketCard({ market, isDpm = false }: MarketCardProps) {
 
         <CardFooter className="flex flex-col gap-1 pt-0 flex-shrink-0">
           <div className="flex justify-between w-full items-center text-xs text-default-400">
-            {isDpm ? (
+            {isUpcoming ? (
+              <span className="text-warning font-semibold">UPCOMING</span>
+            ) : isDpm ? (
               <DpmMarketBadge size="sm" />
             ) : (
               <span>
