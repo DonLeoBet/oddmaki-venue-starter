@@ -81,7 +81,7 @@ const MATCH_PHRASES = [
   "match",
 ];
 
-function getMarketText(item: UnifiedFeedItem): string {
+export function getMarketText(item: UnifiedFeedItem): string {
   if (item.type === "standalone") {
     return `${item.data.question} ${item.data.tags?.join(" ") ?? ""}`;
   }
