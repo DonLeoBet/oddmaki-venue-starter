@@ -5,7 +5,7 @@ import type { UnifiedFeedItem } from "../types";
 import { useMemo } from "react";
 
 import { useUnifiedFeed } from "../hooks/useUnifiedFeed";
-import { isLongTermMarket } from "../utils/discovery";
+import { classifyMarket, isLongTermMarket } from "../utils/discovery";
 
 import { MarketCard } from "./MarketCard";
 import { MarketSkeleton } from "./MarketSkeleton";
@@ -20,6 +20,7 @@ import {
 const MAX_TRENDING = 10;
 const MAX_FEATURED = 6;
 const MAX_RECENT = 10;
+const MAX_OTHER = 10;
 
 function MarketItem({
   item,
@@ -82,6 +83,19 @@ function Section({
   );
 }
 
+function classifyReport(items: UnifiedFeedItem[] | undefined) {
+  const list = items ?? [];
+  const counts = list.reduce(
+    (acc, item) => {
+      acc[classifyMarket(item)] += 1;
+      return acc;
+    },
+    { futures: 0, matches: 0, other: 0 },
+  );
+
+  return { total: list.length, ...counts };
+}
+
 export function HomeMarketFeed() {
   const {
     data: trendingData,
@@ -94,36 +108,51 @@ export function HomeMarketFeed() {
     error: recentError,
   } = useUnifiedFeed("created", 50);
 
-  // eslint-disable-next-line no-console
-  console.log("[HomeMarketFeed] data", {
-    rawTrending: trendingData?.pages[0]?.items?.length,
-    rawRecent: recentData?.pages[0]?.items?.length,
-  });
-
-  // DEBUG: bypass classification filtering to confirm the data source works.
-  const trendingItems = useMemo(
-    () => (trendingData?.pages[0]?.items ?? []).slice(0, MAX_TRENDING),
+  const trendingAll = useMemo(
+    () => trendingData?.pages[0]?.items ?? [],
     [trendingData],
+  );
+  const recentAll = useMemo(
+    () => recentData?.pages[0]?.items ?? [],
+    [recentData],
+  );
+
+  const trendingItems = useMemo(
+    () => trendingAll.filter(isLongTermMarket).slice(0, MAX_TRENDING),
+    [trendingAll],
   );
 
   const featuredItems = useMemo(
     () =>
-      (trendingData?.pages[0]?.items ?? [])
+      trendingAll
         .filter(
           (item): item is Extract<UnifiedFeedItem, { type: "group" }> =>
-            item.type === "group",
+            item.type === "group" && isLongTermMarket(item),
         )
         .slice(0, MAX_FEATURED),
-    [trendingData],
+    [trendingAll],
   );
 
   const recentItems = useMemo(
-    () => (recentData?.pages[0]?.items ?? []).slice(0, MAX_RECENT),
-    [recentData],
+    () => recentAll.filter(isLongTermMarket).slice(0, MAX_RECENT),
+    [recentAll],
+  );
+
+  const otherItems = useMemo(
+    () =>
+      trendingAll
+        .filter((item) => classifyMarket(item) === "other")
+        .slice(0, MAX_OTHER),
+    [trendingAll],
   );
 
   const seriesIds = useMemo(() => {
-    const all = [...trendingItems, ...recentItems];
+    const all = [
+      ...trendingItems,
+      ...featuredItems,
+      ...recentItems,
+      ...otherItems,
+    ];
 
     return all
       .filter(
@@ -131,12 +160,18 @@ export function HomeMarketFeed() {
           item.type === "series",
       )
       .map((item) => item.data.id);
-  }, [trendingItems, recentItems]);
+  }, [trendingItems, featuredItems, recentItems, otherItems]);
 
   const { data: seriesWindows } = useSeriesCurrentWindows(seriesIds);
 
   const isLoading = trendingLoading || recentLoading;
   const error = trendingError || recentError;
+
+  // Reports
+  // eslint-disable-next-line no-console
+  console.log("[HomeMarketFeed] trending report", classifyReport(trendingAll));
+  // eslint-disable-next-line no-console
+  console.log("[HomeMarketFeed] recent report", classifyReport(recentAll));
 
   if (error) {
     // eslint-disable-next-line no-console
@@ -167,7 +202,8 @@ export function HomeMarketFeed() {
   const hasAny =
     trendingItems.length > 0 ||
     featuredItems.length > 0 ||
-    recentItems.length > 0;
+    recentItems.length > 0 ||
+    otherItems.length > 0;
 
   if (!hasAny) {
     return <EmptyState />;
@@ -189,6 +225,11 @@ export function HomeMarketFeed() {
         currentWindows={seriesWindows}
         items={recentItems}
         title="Recent Futures"
+      />
+      <Section
+        currentWindows={seriesWindows}
+        items={otherItems}
+        title="Other Markets"
       />
     </div>
   );

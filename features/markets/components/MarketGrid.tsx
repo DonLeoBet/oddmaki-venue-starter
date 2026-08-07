@@ -9,6 +9,7 @@ import { Tabs, Tab } from "@heroui/tabs";
 
 import { useUnifiedFeed } from "../hooks/useUnifiedFeed";
 import { useFilterToggle } from "../hooks/useFilterToggle";
+import { classifyMarket } from "../utils/discovery";
 import { MarketStatus } from "../types";
 
 import { MarketCard } from "./MarketCard";
@@ -21,14 +22,12 @@ import {
   PriceSeriesCard,
   useSeriesCurrentWindows,
 } from "@/features/price-market-series";
-import { isLongTermMarket } from "../utils/discovery";
-
 import { CATEGORIES } from "@/config/tags.config";
 
 const ENABLE_MATCH_MARKETS =
   process.env.NEXT_PUBLIC_ENABLE_MATCH_MARKETS === "true";
 
-type FeedTab = "futures" | "matches";
+type FeedTab = "futures" | "other" | "matches";
 
 export function MarketGrid() {
   const searchParams = useSearchParams();
@@ -55,13 +54,74 @@ export function MarketGrid() {
     [data],
   );
 
-  // DEBUG: bypass all classification filters to confirm the data source works.
   const filteredItems = useMemo(() => {
-    // eslint-disable-next-line no-console
-    console.log("[MarketGrid] raw items", items.length);
+    if (items.length === 0) return [];
 
-    return items;
-  }, [items]);
+    let result = items;
+
+    // Category filter
+    if (selectedCategory) {
+      const category = CATEGORIES.find((c) => c.id === selectedCategory);
+
+      if (category && category.matchTags.length > 0) {
+        const mustMatchAll = category.matchAll ?? false;
+
+        result = result.filter((item: UnifiedFeedItem) => {
+          const itemTags = item.data.tags ?? [];
+
+          if (mustMatchAll) {
+            return category.matchTags.every((tag) => itemTags.includes(tag));
+          }
+
+          return itemTags.some((tag) => category.matchTags.includes(tag));
+        });
+      }
+    }
+
+    // Classification: futures / other / matches
+    result = result.filter((item: UnifiedFeedItem) => {
+      const kind = classifyMarket(item);
+
+      if (activeTab === "futures") return kind === "futures";
+      if (activeTab === "other") return kind === "other";
+      if (activeTab === "matches") return kind === "matches";
+
+      return false;
+    });
+
+    // Status filter
+    if (statusFilter === "Resolved") {
+      result = result.filter(
+        (item: UnifiedFeedItem) => item.data.status === MarketStatus.RESOLVED,
+      );
+    } else {
+      // Active includes Active and Draft (UPCOMING)
+      result = result.filter(
+        (item: UnifiedFeedItem) =>
+          item.data.status === MarketStatus.ACTIVE ||
+          item.data.status === MarketStatus.DRAFT,
+      );
+    }
+
+    // Classification report
+    const counts = items.reduce(
+      (acc, item) => {
+        acc[classifyMarket(item)] += 1;
+        return acc;
+      },
+      { futures: 0, matches: 0, other: 0 },
+    );
+
+    // eslint-disable-next-line no-console
+    console.log("[MarketGrid] report", {
+      total: items.length,
+      ...counts,
+      filtered: result.length,
+      tab: activeTab,
+    });
+
+    return result;
+  }, [items, selectedCategory, activeTab, statusFilter]);
 
   // The subgraph no longer denormalizes a series' current window, so derive it
   // for the visible series in one batched query and pass it to each card.
@@ -76,17 +136,6 @@ export function MarketGrid() {
     [filteredItems],
   );
   const { data: seriesWindows } = useSeriesCurrentWindows(seriesIds);
-
-  // eslint-disable-next-line no-console
-  console.log("[MarketGrid] render", {
-    selectedCategory,
-    activeTab,
-    querySortBy,
-    items: items.length,
-    filteredItems: filteredItems.length,
-    hasNextPage,
-    isFetchingNextPage,
-  });
 
   if (error) {
     // eslint-disable-next-line no-console
@@ -120,19 +169,18 @@ export function MarketGrid() {
 
   return (
     <div className="flex flex-1 flex-col gap-4">
-      {ENABLE_MATCH_MARKETS && (
-        <Tabs
-          aria-label="Market feed"
-          fullWidth
-          selectedKey={activeTab}
-          size="md"
-          variant="underlined"
-          onSelectionChange={(key) => setActiveTab(key as FeedTab)}
-        >
-          <Tab key="futures" title="Futures" />
-          <Tab key="matches" title="Matches" />
-        </Tabs>
-      )}
+      <Tabs
+        aria-label="Market feed"
+        fullWidth
+        selectedKey={activeTab}
+        size="md"
+        variant="underlined"
+        onSelectionChange={(key) => setActiveTab(key as FeedTab)}
+      >
+        <Tab key="futures" title="Futures" />
+        <Tab key="other" title="Other" />
+        {ENABLE_MATCH_MARKETS && <Tab key="matches" title="Matches" />}
+      </Tabs>
 
       {/* Filter controls — toggled via filter icon in category bar */}
       {showFilters && (
@@ -209,9 +257,17 @@ function InfiniteScrollSentinel({
 
     if (!node) return;
 
+    // eslint-disable-next-line no-console
+    console.log("[InfiniteScrollSentinel] observe", {
+      hasNextPage,
+      isFetchingNextPage,
+    });
+
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0]?.isIntersecting && !isFetchingNextPage) {
+          // eslint-disable-next-line no-console
+          console.log("[InfiniteScrollSentinel] onLoadMore");
           onLoadMore();
         }
       },
