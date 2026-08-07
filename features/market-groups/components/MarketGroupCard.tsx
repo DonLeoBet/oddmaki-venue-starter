@@ -6,6 +6,7 @@ import { Card, CardHeader, CardBody, CardFooter } from "@heroui/card";
 import { Avatar } from "@heroui/avatar";
 import NextLink from "next/link";
 
+import { useTeamLogos } from "../hooks/useTeamLogos";
 import { MarketGroupStatus } from "../types";
 
 function CheckIcon({ className }: { className?: string }) {
@@ -46,27 +47,83 @@ interface MarketGroupCardProps {
   group: FormattedMarketGroup;
 }
 
+function ProbabilityCircle({
+  percent,
+  color = "currentColor",
+}: {
+  percent: number;
+  color?: string;
+}) {
+  const r = 18;
+  const c = 2 * Math.PI * r;
+  const offset = c * (1 - Math.max(0, Math.min(100, percent)) / 100);
+
+  return (
+    <svg
+      className="w-12 h-12 -rotate-90"
+      viewBox="0 0 44 44"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <circle
+        cx="22"
+        cy="22"
+        fill="none"
+        r={r}
+        stroke="currentColor"
+        strokeOpacity="0.15"
+        strokeWidth="3"
+      />
+      <circle
+        cx="22"
+        cy="22"
+        fill="none"
+        r={r}
+        stroke={color}
+        strokeDasharray={c}
+        strokeDashoffset={offset}
+        strokeLinecap="round"
+        strokeWidth="3"
+      />
+    </svg>
+  );
+}
+
 function OutcomeRow({
   outcome,
   isWinner,
   isResolved,
+  logo,
 }: {
   outcome: FormattedGroupOutcome;
   isWinner: boolean;
   isResolved: boolean;
+  logo?: string | null;
 }) {
   const yes = Math.round(outcome.probability);
   const no = Math.max(0, Math.min(100, 100 - yes));
 
   return (
     <div className="flex items-center justify-between py-2 gap-3">
-      <div className="flex items-center gap-2 flex-1 min-w-0">
-        <Avatar
-          className="flex-shrink-0"
-          name={outcome.name}
-          radius="sm"
-          size="sm"
-        />
+      <div className="flex items-center gap-3 flex-1 min-w-0">
+        <div className="relative flex items-center justify-center w-12 h-12 flex-shrink-0">
+          <Avatar
+            className="w-10 h-10 flex-shrink-0"
+            name={outcome.name}
+            radius="sm"
+            size="sm"
+            src={logo ?? undefined}
+          />
+          <div className="absolute inset-0">
+            <ProbabilityCircle
+              color={
+                yes >= 50
+                  ? "hsl(var(--heroui-primary))"
+                  : "hsl(var(--heroui-default-400))"
+              }
+              percent={yes}
+            />
+          </div>
+        </div>
         <span className="text-sm truncate">{outcome.name}</span>
       </div>
       <div className="flex items-center gap-3 flex-shrink-0">
@@ -113,6 +170,17 @@ export function MarketGroupCard({ group }: MarketGroupCardProps) {
     (a, b) => b.probability - a.probability,
   );
 
+  const isFutures =
+    (group.tags ?? []).some(
+      (tag) =>
+        tag.toLowerCase().startsWith("outright") ||
+        tag.toLowerCase() === "outrights" ||
+        tag.toLowerCase().endsWith(" football"),
+    ) || group.marketQuestion.toLowerCase().includes("outright");
+
+  const teamNames = isFutures ? sortedOutcomes.map((o) => o.name) : [];
+  const { data: logoMap } = useTeamLogos(teamNames);
+
   return (
     <NextLink className="block" href={`/market/multi/${group.groupId}`}>
       <Card className="w-full h-auto min-h-[180px] hover:scale-[1.02] transition-transform cursor-pointer">
@@ -129,6 +197,7 @@ export function MarketGroupCard({ group }: MarketGroupCardProps) {
                 key={outcome.marketId}
                 isResolved={group.status === MarketGroupStatus.RESOLVED}
                 isWinner={outcome.marketId === group.resolvedMarketId}
+                logo={logoMap?.[outcome.name]}
                 outcome={outcome}
               />
             ))}
