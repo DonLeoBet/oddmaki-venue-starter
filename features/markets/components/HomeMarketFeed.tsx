@@ -2,7 +2,7 @@
 
 import type { UnifiedFeedItem } from "../types";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
 import { useUnifiedFeed } from "../hooks/useUnifiedFeed";
 import { classifyMarket, isLongTermMarket } from "../utils/discovery";
@@ -106,6 +106,9 @@ export function HomeMarketFeed() {
     data: recentData,
     isLoading: recentLoading,
     error: recentError,
+    fetchNextPage: fetchRecentNextPage,
+    hasNextPage: hasRecentNextPage,
+    isFetchingNextPage: isFetchingRecentNextPage,
   } = useUnifiedFeed("created", 50);
 
   const trendingAll = useMemo(
@@ -145,6 +148,57 @@ export function HomeMarketFeed() {
         .slice(0, MAX_OTHER),
     [trendingAll],
   );
+
+  // DEBUG: scan the full "created" feed for futures without rendering them.
+  useEffect(() => {
+    if (!recentData) return;
+
+    const allScanned = recentData.pages.flatMap((p) => p.items);
+    const counts = allScanned.reduce(
+      (acc, item) => {
+        const kind = classifyMarket(item);
+        acc[kind] += 1;
+        if (kind === "futures") {
+          const title =
+            item.type === "standalone"
+              ? item.data.question
+              : item.type === "group"
+                ? item.data.marketQuestion
+                : item.data.title;
+          acc.futureExamples.push(title);
+        }
+        return acc;
+      },
+      {
+        futures: 0,
+        matches: 0,
+        other: 0,
+        futureExamples: [] as string[],
+      },
+    );
+
+    // eslint-disable-next-line no-console
+    console.log("[HomeMarketFeed] futures scan", {
+      totalScanned: allScanned.length,
+      pagesScanned: recentData.pages.length,
+      futuresFound: counts.futures,
+      matchesFound: counts.matches,
+      otherFound: counts.other,
+      hasNextPage: hasRecentNextPage,
+      isFetchingNextPage: isFetchingRecentNextPage,
+      futureExamples: counts.futureExamples.slice(0, 5),
+    });
+
+    if (counts.futures > 0 || !hasRecentNextPage) return;
+    if (!isFetchingRecentNextPage) {
+      fetchRecentNextPage();
+    }
+  }, [
+    recentData,
+    fetchRecentNextPage,
+    hasRecentNextPage,
+    isFetchingRecentNextPage,
+  ]);
 
   const seriesIds = useMemo(() => {
     const all = [
