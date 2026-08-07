@@ -21,82 +21,14 @@ import {
   PriceSeriesCard,
   useSeriesCurrentWindows,
 } from "@/features/price-market-series";
+import { isLongTermMarket } from "../utils/discovery";
+
 import { CATEGORIES } from "@/config/tags.config";
 
 const ENABLE_MATCH_MARKETS =
   process.env.NEXT_PUBLIC_ENABLE_MATCH_MARKETS === "true";
 
 type FeedTab = "futures" | "matches";
-
-const FUTURE_PHRASES = [
-  "win the",
-  "winning the",
-  "winner",
-  "winners of",
-  "champion",
-  "championship",
-  "top scorer",
-  "top goalscorer",
-  "golden boot",
-  "futures",
-  "outright",
-  "tournament winner",
-  "league winner",
-  "season",
-  "to be relegated",
-  "to qualify",
-];
-
-const MATCH_PHRASES = [
-  " vs ",
-  " v ",
-  "1x2",
-  "matchday",
-  "round",
-  "fixture",
-  "week ",
-];
-
-function getMarketText(item: UnifiedFeedItem): string {
-  if (item.type === "standalone") {
-    return `${item.data.question} ${item.data.tags?.join(" ") ?? ""}`;
-  }
-
-  if (item.type === "group") {
-    return `${item.data.marketQuestion} ${item.data.tags?.join(" ") ?? ""} ${item.data.outcomes.map((o) => o.name).join(" ")}`;
-  }
-
-  return `${item.data.title} ${item.data.tags?.join(" ") ?? ""}`;
-}
-
-function isLongTermMarket(item: UnifiedFeedItem): boolean {
-  const text = getMarketText(item).toLowerCase();
-  const tags = (item.data.tags ?? []).map((t) => t.toLowerCase());
-
-  // Future signals take precedence — a title can legitimately list contenders
-  // with "vs" (e.g. "Premier League winner: Man City vs Arsenal vs ...")
-  // and still be a futures market.
-  if (FUTURE_PHRASES.some((p) => text.includes(p))) {
-    return true;
-  }
-
-  if (tags.some((t) => t === "futures" || t.includes("outright"))) {
-    return true;
-  }
-
-  if (MATCH_PHRASES.some((p) => text.includes(p))) {
-    return false;
-  }
-
-  return tags.some(
-    (t) =>
-      t.includes("winner") ||
-      t.includes("champion") ||
-      t.includes("season") ||
-      t.includes("tournament") ||
-      t.includes("long-term"),
-  );
-}
 
 export function MarketGrid() {
   const searchParams = useSearchParams();
@@ -106,14 +38,8 @@ export function MarketGrid() {
   const [activeTab, setActiveTab] = useState<FeedTab>("futures");
   const { showFilters } = useFilterToggle();
 
-  // Futures should surface the newest markets first so long-term markets with
-  // $0 volume are not buried. Matches keep the volume-based trending default.
   const querySortBy: "created" | "volume" =
-    activeTab === "futures"
-      ? "created"
-      : sortParam === "new" && !selectedCategory
-        ? "created"
-        : "volume";
+    sortParam === "new" ? "created" : "volume";
 
   const {
     data,

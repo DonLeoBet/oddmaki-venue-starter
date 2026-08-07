@@ -4,3 +4,4 @@ export { MarketSkeleton } from "./MarketSkeleton";
 export { EmptyState } from "./EmptyState";
 export { MarketProgress } from "./MarketProgress";
 export { CategoryFilter } from "./CategoryFilter";
+export { HomeMarketFeed } from "./HomeMarketFeed";

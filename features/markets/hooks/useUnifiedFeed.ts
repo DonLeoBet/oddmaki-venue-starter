@@ -17,7 +17,7 @@ import { getVenueId } from "@/config/venue.config";
 import { queryKeys } from "@/lib/oddmaki/queryKeys";
 import { formatPriceMarketSeries } from "@/features/price-market-series";
 
-export const UNIFIED_FEED_PAGE_SIZE = 50;
+export const UNIFIED_FEED_PAGE_SIZE = 12;
 
 /**
  * Transform raw standalone market to FormattedMarket
