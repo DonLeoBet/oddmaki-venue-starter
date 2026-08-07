@@ -167,9 +167,6 @@ export function HomeMarketFeed() {
 
       const allScanned = recentData.pages.flatMap((p) => p.items);
 
-      const findTag = (item: UnifiedFeedItem, prefix: string): string | null =>
-        item.data.tags?.find((t) => t.toLowerCase().startsWith(prefix)) ?? null;
-
       const rows: Record<
         string,
         {
@@ -184,9 +181,46 @@ export function HomeMarketFeed() {
       > = {};
 
       for (const item of allScanned) {
-        const country = findTag(item, "country-") ?? "—";
-        const league = findTag(item, "league-") ?? "—";
-        const competition = findTag(item, "competition-") ?? "—";
+        const tags = item.data.tags ?? [];
+        const lowerTags = tags.map((t) => t.toLowerCase());
+        const sportsIdx = lowerTags.indexOf("sports");
+
+        let country = "—";
+        let league = "—";
+        let competition = "—";
+
+        if (sportsIdx !== -1) {
+          const before = tags[sportsIdx - 1];
+          const after = tags.slice(sportsIdx + 1);
+
+          const countryCandidate = after.find((t) =>
+            t.toLowerCase().endsWith(" football"),
+          );
+          if (countryCandidate) country = countryCandidate;
+
+          const beforeLower = before?.toLowerCase() ?? "";
+          if (beforeLower.startsWith("league-") || beforeLower.startsWith("competition-")) {
+            league = before;
+          } else {
+            const leagueCandidate = after.find(
+              (t) =>
+                t !== country &&
+                !t.toLowerCase().startsWith("match-markets") &&
+                !t.toLowerCase().startsWith("outright") &&
+                !t.toLowerCase().endsWith(" football"),
+            );
+            if (leagueCandidate) league = leagueCandidate;
+          }
+        }
+
+        if (league === "—") {
+          league = tags.find((t) => t.toLowerCase().startsWith("league-")) ?? "—";
+        }
+        if (competition === "—") {
+          competition =
+            tags.find((t) => t.toLowerCase().startsWith("competition-")) ?? "—";
+        }
+
         const kind = classifyMarket(item);
         const key = `${country}|${league}|${competition}`;
 
@@ -236,12 +270,6 @@ export function HomeMarketFeed() {
 
   const isLoading = trendingLoading || recentLoading;
   const error = trendingError || recentError;
-
-  // Reports
-  // eslint-disable-next-line no-console
-  console.log("[HomeMarketFeed] trending report", classifyReport(trendingAll));
-  // eslint-disable-next-line no-console
-  console.log("[HomeMarketFeed] recent report", classifyReport(recentAll));
 
   if (error) {
     // eslint-disable-next-line no-console

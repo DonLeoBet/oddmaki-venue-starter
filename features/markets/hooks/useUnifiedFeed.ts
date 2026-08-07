@@ -16,7 +16,7 @@ import { useOddMakiClient } from "@/lib/oddmaki/hooks";
 import { getVenueId } from "@/config/venue.config";
 import { queryKeys } from "@/lib/oddmaki/queryKeys";
 import { formatPriceMarketSeries } from "@/features/price-market-series";
-import { classifyMarket, getMarketText } from "../utils/discovery";
+
 
 export const UNIFIED_FEED_PAGE_SIZE = 12;
 
@@ -161,37 +161,6 @@ export function useUnifiedFeed(
         groupCount >= pageSize ||
         seriesCount >= pageSize;
 
-      const firstFive = items.slice(0, 5).map((item) => {
-        const base = { type: item.type, status: item.data.status };
-
-        if (item.type === "standalone") {
-          return {
-            ...base,
-            id: item.data.marketId,
-            title: item.data.question,
-            tags: item.data.tags,
-          };
-        }
-
-        if (item.type === "group") {
-          return {
-            ...base,
-            id: item.data.groupId,
-            title: item.data.marketQuestion,
-            tags: item.data.tags,
-            totalMarkets: item.data.totalMarkets,
-          };
-        }
-
-        return {
-          ...base,
-          id: item.data.id,
-          title: item.data.title,
-          tags: item.data.tags,
-          interval: item.data.interval,
-        };
-      });
-
       const statuses = Array.from(new Set(items.map((i) => i.data.status)));
 
       // eslint-disable-next-line no-console
@@ -205,47 +174,6 @@ export function useUnifiedFeed(
         hasMore,
         statuses,
       });
-
-      // eslint-disable-next-line no-console
-      console.log("[useUnifiedFeed] first 5", firstFive);
-
-      // Temporary title/classification table to debug the data source.
-      const first20 = items.slice(0, 20).map((item) => ({
-        type: item.type,
-        id:
-          item.type === "standalone"
-            ? item.data.marketId
-            : item.type === "group"
-              ? item.data.groupId
-              : item.data.id,
-        status: item.data.status,
-        title:
-          item.type === "standalone"
-            ? item.data.question
-            : item.type === "group"
-              ? item.data.marketQuestion
-              : item.data.title,
-        question:
-          item.type === "standalone"
-            ? item.data.question
-            : item.type === "group"
-              ? item.data.outcomes[0]?.question ?? ""
-              : item.data.currentMarket?.question ?? "",
-        tags: (item.data.tags ?? []).join(","),
-        outcomes:
-          item.type === "group"
-            ? item.data.outcomes.map((o) => o.name).join(",")
-            : item.type === "standalone"
-              ? item.data.outcomes.join(",")
-              : item.data.currentMarket?.outcomes.join(",") ?? "",
-        textSample: getMarketText(item).slice(0, 120),
-        classification: classifyMarket(item),
-      }));
-
-      // eslint-disable-next-line no-console
-      console.log("[useUnifiedFeed] title vs classification (first 20)");
-      // eslint-disable-next-line no-console
-      console.table(first20);
 
       return { items, hasMore };
     },
