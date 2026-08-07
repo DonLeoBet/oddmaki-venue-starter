@@ -2,7 +2,7 @@
 
 import type { UnifiedFeedItem } from "../types";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import { useUnifiedFeed } from "../hooks/useUnifiedFeed";
 import { isLongTermMarket } from "../utils/discovery";
@@ -127,16 +127,58 @@ export function HomeMarketFeed() {
     [recentAll],
   );
 
+  // DEBUG: load all pages and print season-long markets.
+  const seasonScanDoneRef = useRef(false);
+
   useEffect(() => {
     if (!recentData) return;
-    if (recentItems.length >= MAX_RECENT) return;
-    if (!hasRecentNextPage) return;
-    if (isFetchingRecentNextPage) return;
 
-    fetchRecentNextPage();
+    if (!hasRecentNextPage && !seasonScanDoneRef.current) {
+      seasonScanDoneRef.current = true;
+
+      const allLoaded = recentData.pages.flatMap((p) => p.items);
+      const seasonPhrases = ["2026/2027", "2026-2027", "2027 season"];
+
+      const seasonMarkets = allLoaded.filter((item) => {
+        const text =
+          item.type === "standalone"
+            ? item.data.question
+            : item.type === "group"
+              ? `${item.data.marketQuestion} ${item.data.outcomes[0]?.question ?? ""}`
+              : item.data.title;
+
+        const lower = text.toLowerCase();
+        return seasonPhrases.some((p) => lower.includes(p.toLowerCase()));
+      });
+
+      // eslint-disable-next-line no-console
+      console.log("[HomeMarketFeed] season scan", {
+        totalLoaded: allLoaded.length,
+        seasonMatches: seasonMarkets.length,
+      });
+
+      // eslint-disable-next-line no-console
+      console.table(
+        seasonMarkets.map((item) => ({
+          type: item.type,
+          title:
+            item.type === "standalone"
+              ? item.data.question
+              : item.type === "group"
+                ? item.data.marketQuestion
+                : item.data.title,
+          tags: (item.data.tags ?? []).join(","),
+        })),
+      );
+
+      return;
+    }
+
+    if (hasRecentNextPage && !isFetchingRecentNextPage) {
+      fetchRecentNextPage();
+    }
   }, [
     recentData,
-    recentItems,
     fetchRecentNextPage,
     hasRecentNextPage,
     isFetchingRecentNextPage,
