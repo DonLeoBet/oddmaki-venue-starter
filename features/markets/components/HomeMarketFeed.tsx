@@ -149,99 +149,103 @@ export function HomeMarketFeed() {
     [trendingAll],
   );
 
-  // DEBUG: scan the full "created" feed and report market distribution
-  // by country/league/competition. Stops when all pages are loaded.
-  const distributionLoggedRef = useRef(false);
+  // DEBUG: targeted scan for one country that should contain only futures.
+  // Stops as soon as we have 5 examples from the chosen country or run out of pages.
+  const targetCountries = ["japan", "korea", "scotland", "morocco", "uae"];
+  const targetExamplesRef = useRef(0);
 
   useEffect(() => {
     if (!recentData) return;
 
-    if (hasRecentNextPage && !isFetchingRecentNextPage) {
-      fetchRecentNextPage();
+    const allLoaded = recentData.pages.flatMap((p) => p.items);
+    const matched = allLoaded.filter((item) =>
+      (item.data.tags ?? []).some((tag) =>
+        targetCountries.some((c) => tag.toLowerCase().includes(c)),
+      ),
+    );
+
+    const targetFound = targetExamplesRef.current + matched.length;
+    targetExamplesRef.current = matched.length;
+
+    // eslint-disable-next-line no-console
+    console.log("[HomeMarketFeed] target country scan", {
+      pagesLoaded: recentData.pages.length,
+      totalLoaded: allLoaded.length,
+      targetExamplesSoFar: matched.length,
+      hasNextPage: hasRecentNextPage,
+      isFetchingNextPage: isFetchingRecentNextPage,
+    });
+
+    if (matched.length >= 5 || !hasRecentNextPage) {
+      // Print the exact structure of the first 5 examples.
+      matched.slice(0, 5).forEach((item, idx) => {
+        const tags = item.data.tags ?? [];
+        const country =
+          tags.find((t) => t.toLowerCase().endsWith(" football")) ?? "—";
+        const league =
+          tags.find(
+            (t) =>
+              !t.toLowerCase().startsWith("outright") &&
+              !t.toLowerCase().startsWith("fixture") &&
+              !t.toLowerCase().startsWith("kickoff") &&
+              !t.toLowerCase().startsWith("match-markets") &&
+              !t.toLowerCase().startsWith("sports") &&
+              !t.toLowerCase().endsWith(" football"),
+          ) ?? "—";
+
+        // eslint-disable-next-line no-console
+        console.log(`[HomeMarketFeed] target example ${idx + 1}`, {
+          type: item.type,
+          id:
+            item.type === "standalone"
+              ? item.data.marketId
+              : item.type === "group"
+                ? item.data.groupId
+                : item.data.id,
+          title:
+            item.type === "standalone"
+              ? item.data.question
+              : item.type === "group"
+                ? item.data.marketQuestion
+                : item.data.title,
+          question:
+            item.type === "standalone"
+              ? item.data.question
+              : item.type === "group"
+                ? item.data.outcomes[0]?.question ?? ""
+                : item.data.currentMarket?.question ?? "",
+          tags,
+          country,
+          league,
+          outcomes:
+            item.type === "group"
+              ? item.data.outcomes.map((o) => ({
+                  name: o.name,
+                  question: o.question,
+                }))
+              : item.type === "standalone"
+                ? item.data.outcomes
+                : item.data.currentMarket?.outcomes,
+          metadata: {
+            status: item.data.status,
+            totalMarkets: item.type === "group" ? item.data.totalMarkets : null,
+            activeMarketCount:
+              item.type === "group" ? item.data.activeMarketCount : null,
+            resolvedMarketId:
+              item.type === "group" ? item.data.resolvedMarketId : null,
+            createdAt: item.type === "group" ? item.data.createdAt : null,
+            creator: item.type === "group" ? item.data.creator : null,
+            totalVolume: "totalVolume" in item.data ? item.data.totalVolume : null,
+            volumeFormatted: "volumeFormatted" in item.data ? item.data.volumeFormatted : null,
+          },
+        });
+      });
 
       return;
     }
 
-    if (!hasRecentNextPage && !distributionLoggedRef.current) {
-      distributionLoggedRef.current = true;
-
-      const allScanned = recentData.pages.flatMap((p) => p.items);
-
-      const rows: Record<
-        string,
-        {
-          country: string;
-          league: string;
-          competition: string;
-          total: number;
-          matches: number;
-          futures: number;
-          other: number;
-        }
-      > = {};
-
-      for (const item of allScanned) {
-        const tags = item.data.tags ?? [];
-        const lowerTags = tags.map((t) => t.toLowerCase());
-        const sportsIdx = lowerTags.indexOf("sports");
-
-        let country = "—";
-        let league = "—";
-        let competition = "—";
-
-        if (sportsIdx !== -1) {
-          const before = tags[sportsIdx - 1];
-          const after = tags.slice(sportsIdx + 1);
-
-          const countryCandidate = after.find((t) =>
-            t.toLowerCase().endsWith(" football"),
-          );
-          if (countryCandidate) country = countryCandidate;
-
-          const beforeLower = before?.toLowerCase() ?? "";
-          if (beforeLower.startsWith("league-") || beforeLower.startsWith("competition-")) {
-            league = before;
-          } else {
-            const leagueCandidate = after.find(
-              (t) =>
-                t !== country &&
-                !t.toLowerCase().startsWith("match-markets") &&
-                !t.toLowerCase().startsWith("outright") &&
-                !t.toLowerCase().endsWith(" football"),
-            );
-            if (leagueCandidate) league = leagueCandidate;
-          }
-        }
-
-        if (league === "—") {
-          league = tags.find((t) => t.toLowerCase().startsWith("league-")) ?? "—";
-        }
-        if (competition === "—") {
-          competition =
-            tags.find((t) => t.toLowerCase().startsWith("competition-")) ?? "—";
-        }
-
-        const kind = classifyMarket(item);
-        const key = `${country}|${league}|${competition}`;
-
-        if (!rows[key]) {
-          rows[key] = { country, league, competition, total: 0, matches: 0, futures: 0, other: 0 };
-        }
-
-        rows[key].total += 1;
-        rows[key][kind] += 1;
-      }
-
-      const table = Object.values(rows).sort((a, b) => b.total - a.total);
-
-      // eslint-disable-next-line no-console
-      console.log("[HomeMarketFeed] full feed distribution", {
-        totalScanned: allScanned.length,
-        pagesScanned: recentData.pages.length,
-        groups: table.length,
-      });
-      // eslint-disable-next-line no-console
-      console.table(table);
+    if (hasRecentNextPage && !isFetchingRecentNextPage) {
+      fetchRecentNextPage();
     }
   }, [
     recentData,
