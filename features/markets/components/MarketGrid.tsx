@@ -5,7 +5,7 @@ import type { UnifiedFeedItem } from "../types";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Tabs, Tab } from "@heroui/tabs";
+
 
 import { useUnifiedFeed } from "../hooks/useUnifiedFeed";
 import { useFilterToggle } from "../hooks/useFilterToggle";
@@ -24,21 +24,15 @@ import {
 } from "@/features/price-market-series";
 import { CATEGORIES } from "@/config/tags.config";
 
-const ENABLE_MATCH_MARKETS =
-  process.env.NEXT_PUBLIC_ENABLE_MATCH_MARKETS === "true";
-
-type FeedTab = "futures" | "other" | "matches";
-
 export function MarketGrid() {
   const searchParams = useSearchParams();
   const selectedCategory = searchParams.get("category");
   const sortParam = searchParams.get("sort");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("Active");
-  const [activeTab, setActiveTab] = useState<FeedTab>("futures");
   const { showFilters } = useFilterToggle();
 
   const querySortBy: "created" | "volume" =
-    sortParam === "new" ? "created" : "volume";
+    sortParam === "popular" ? "volume" : "created";
 
   const {
     data,
@@ -78,16 +72,8 @@ export function MarketGrid() {
       }
     }
 
-    // Classification: futures / other / matches
-    result = result.filter((item: UnifiedFeedItem) => {
-      const kind = classifyMarket(item);
-
-      if (activeTab === "futures") return kind === "futures";
-      if (activeTab === "other") return kind === "other";
-      if (activeTab === "matches") return kind === "matches";
-
-      return false;
-    });
+    // Show only long-term futures markets.
+    result = result.filter((item: UnifiedFeedItem) => classifyMarket(item) === "futures");
 
     // Status filter
     if (statusFilter === "Resolved") {
@@ -103,25 +89,8 @@ export function MarketGrid() {
       );
     }
 
-    // Classification report
-    const counts = items.reduce(
-      (acc, item) => {
-        acc[classifyMarket(item)] += 1;
-        return acc;
-      },
-      { futures: 0, matches: 0, other: 0 },
-    );
-
-    // eslint-disable-next-line no-console
-    console.log("[MarketGrid] report", {
-      total: items.length,
-      ...counts,
-      filtered: result.length,
-      tab: activeTab,
-    });
-
     return result;
-  }, [items, selectedCategory, activeTab, statusFilter]);
+  }, [items, selectedCategory, statusFilter]);
 
   // The subgraph no longer denormalizes a series' current window, so derive it
   // for the visible series in one batched query and pass it to each card.
@@ -169,18 +138,7 @@ export function MarketGrid() {
 
   return (
     <div className="flex flex-1 flex-col gap-4">
-      <Tabs
-        aria-label="Market feed"
-        fullWidth
-        selectedKey={activeTab}
-        size="md"
-        variant="underlined"
-        onSelectionChange={(key) => setActiveTab(key as FeedTab)}
-      >
-        <Tab key="futures" title="Futures" />
-        <Tab key="other" title="Other" />
-        {ENABLE_MATCH_MARKETS && <Tab key="matches" title="Matches" />}
-      </Tabs>
+      <h2 className="text-lg font-semibold">Futures</h2>
 
       {/* Filter controls — toggled via filter icon in category bar */}
       {showFilters && (

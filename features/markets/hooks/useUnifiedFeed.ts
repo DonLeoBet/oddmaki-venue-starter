@@ -112,29 +112,11 @@ export function useUnifiedFeed(
     queryKey,
     initialPageParam: 0,
     queryFn: async ({ pageParam }): Promise<UnifiedFeedPage> => {
-      // eslint-disable-next-line no-console
-      console.log("[useUnifiedFeed] fetch start", {
-        queryKey,
-        pageParam,
-        sortBy,
-        venueId: venueId?.toString(),
-        pageSize,
-      });
-
       const feedData = await client.public.getUnifiedMarketFeed({
         venueId,
         first: pageSize,
         skip: pageParam,
         sortBy,
-      });
-
-      // eslint-disable-next-line no-console
-      console.log("[useUnifiedFeed] fetch end", {
-        queryKey,
-        pageParam,
-        standaloneCount: feedData?.standaloneMarkets?.length ?? 0,
-        groupCount: feedData?.marketGroups?.length ?? 0,
-        seriesCount: feedData?.priceMarketSeries?.length ?? 0,
       });
 
       const merged = client.public.mergeAndSortFeed(feedData, sortBy);
@@ -160,20 +142,6 @@ export function useUnifiedFeed(
         standaloneCount >= pageSize ||
         groupCount >= pageSize ||
         seriesCount >= pageSize;
-
-      const statuses = Array.from(new Set(items.map((i) => i.data.status)));
-
-      // eslint-disable-next-line no-console
-      console.log("[useUnifiedFeed] raw totals", {
-        queryKey,
-        pageParam,
-        standaloneCount,
-        groupCount,
-        seriesCount,
-        merged: items.length,
-        hasMore,
-        statuses,
-      });
 
       return { items, hasMore };
     },

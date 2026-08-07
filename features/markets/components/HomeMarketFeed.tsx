@@ -2,10 +2,10 @@
 
 import type { UnifiedFeedItem } from "../types";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo } from "react";
 
 import { useUnifiedFeed } from "../hooks/useUnifiedFeed";
-import { classifyMarket, isLongTermMarket } from "../utils/discovery";
+import { isLongTermMarket } from "../utils/discovery";
 
 import { MarketCard } from "./MarketCard";
 import { MarketSkeleton } from "./MarketSkeleton";
@@ -20,7 +20,6 @@ import {
 const MAX_TRENDING = 10;
 const MAX_FEATURED = 6;
 const MAX_RECENT = 10;
-const MAX_OTHER = 10;
 
 function MarketItem({
   item,
@@ -83,19 +82,6 @@ function Section({
   );
 }
 
-function classifyReport(items: UnifiedFeedItem[] | undefined) {
-  const list = items ?? [];
-  const counts = list.reduce(
-    (acc, item) => {
-      acc[classifyMarket(item)] += 1;
-      return acc;
-    },
-    { futures: 0, matches: 0, other: 0 },
-  );
-
-  return { total: list.length, ...counts };
-}
-
 export function HomeMarketFeed() {
   const {
     data: trendingData,
@@ -116,7 +102,7 @@ export function HomeMarketFeed() {
     [trendingData],
   );
   const recentAll = useMemo(
-    () => recentData?.pages[0]?.items ?? [],
+    () => recentData?.pages.flatMap((p) => p.items) ?? [],
     [recentData],
   );
 
@@ -141,114 +127,16 @@ export function HomeMarketFeed() {
     [recentAll],
   );
 
-  const otherItems = useMemo(
-    () =>
-      trendingAll
-        .filter((item) => classifyMarket(item) === "other")
-        .slice(0, MAX_OTHER),
-    [trendingAll],
-  );
-
-  // DEBUG: targeted scan for one country that should contain only futures.
-  // Stops as soon as we have 5 examples from the chosen country or run out of pages.
-  const targetCountries = ["japan", "korea", "scotland", "morocco", "uae"];
-  const targetExamplesRef = useRef(0);
-
   useEffect(() => {
     if (!recentData) return;
+    if (recentItems.length >= MAX_RECENT) return;
+    if (!hasRecentNextPage) return;
+    if (isFetchingRecentNextPage) return;
 
-    const allLoaded = recentData.pages.flatMap((p) => p.items);
-    const matched = allLoaded.filter((item) =>
-      (item.data.tags ?? []).some((tag) =>
-        targetCountries.some((c) => tag.toLowerCase().includes(c)),
-      ),
-    );
-
-    const targetFound = targetExamplesRef.current + matched.length;
-    targetExamplesRef.current = matched.length;
-
-    // eslint-disable-next-line no-console
-    console.log("[HomeMarketFeed] target country scan", {
-      pagesLoaded: recentData.pages.length,
-      totalLoaded: allLoaded.length,
-      targetExamplesSoFar: matched.length,
-      hasNextPage: hasRecentNextPage,
-      isFetchingNextPage: isFetchingRecentNextPage,
-    });
-
-    if (matched.length >= 5 || !hasRecentNextPage) {
-      // Print the exact structure of the first 5 examples.
-      matched.slice(0, 5).forEach((item, idx) => {
-        const tags = item.data.tags ?? [];
-        const country =
-          tags.find((t) => t.toLowerCase().endsWith(" football")) ?? "—";
-        const league =
-          tags.find(
-            (t) =>
-              !t.toLowerCase().startsWith("outright") &&
-              !t.toLowerCase().startsWith("fixture") &&
-              !t.toLowerCase().startsWith("kickoff") &&
-              !t.toLowerCase().startsWith("match-markets") &&
-              !t.toLowerCase().startsWith("sports") &&
-              !t.toLowerCase().endsWith(" football"),
-          ) ?? "—";
-
-        // eslint-disable-next-line no-console
-        console.log(`[HomeMarketFeed] target example ${idx + 1}`, {
-          type: item.type,
-          id:
-            item.type === "standalone"
-              ? item.data.marketId
-              : item.type === "group"
-                ? item.data.groupId
-                : item.data.id,
-          title:
-            item.type === "standalone"
-              ? item.data.question
-              : item.type === "group"
-                ? item.data.marketQuestion
-                : item.data.title,
-          question:
-            item.type === "standalone"
-              ? item.data.question
-              : item.type === "group"
-                ? item.data.outcomes[0]?.question ?? ""
-                : item.data.currentMarket?.question ?? "",
-          tags,
-          country,
-          league,
-          outcomes:
-            item.type === "group"
-              ? item.data.outcomes.map((o) => ({
-                  name: o.name,
-                  question: o.question,
-                }))
-              : item.type === "standalone"
-                ? item.data.outcomes
-                : item.data.currentMarket?.outcomes,
-          metadata: {
-            status: item.data.status,
-            totalMarkets: item.type === "group" ? item.data.totalMarkets : null,
-            activeMarketCount:
-              item.type === "group" ? item.data.activeMarketCount : null,
-            resolvedMarketId:
-              item.type === "group" ? item.data.resolvedMarketId : null,
-            createdAt: item.type === "group" ? item.data.createdAt : null,
-            creator: item.type === "group" ? item.data.creator : null,
-            totalVolume: "totalVolume" in item.data ? item.data.totalVolume : null,
-            volumeFormatted: "volumeFormatted" in item.data ? item.data.volumeFormatted : null,
-          },
-        });
-      });
-
-      return;
-    }
-
-    if (hasRecentNextPage && !isFetchingRecentNextPage) {
-      fetchRecentNextPage();
-    }
+    fetchRecentNextPage();
   }, [
     recentData,
+    recentItems,
     fetchRecentNextPage,
     hasRecentNextPage,
     isFetchingRecentNextPage,
@@ -259,7 +147,6 @@ export function HomeMarketFeed() {
       ...trendingItems,
       ...featuredItems,
       ...recentItems,
-      ...otherItems,
     ];
 
     return all
@@ -268,7 +155,7 @@ export function HomeMarketFeed() {
           item.type === "series",
       )
       .map((item) => item.data.id);
-  }, [trendingItems, featuredItems, recentItems, otherItems]);
+  }, [trendingItems, featuredItems, recentItems]);
 
   const { data: seriesWindows } = useSeriesCurrentWindows(seriesIds);
 
@@ -304,8 +191,7 @@ export function HomeMarketFeed() {
   const hasAny =
     trendingItems.length > 0 ||
     featuredItems.length > 0 ||
-    recentItems.length > 0 ||
-    otherItems.length > 0;
+    recentItems.length > 0;
 
   if (!hasAny) {
     return <EmptyState />;
@@ -327,11 +213,6 @@ export function HomeMarketFeed() {
         currentWindows={seriesWindows}
         items={recentItems}
         title="Recent Futures"
-      />
-      <Section
-        currentWindows={seriesWindows}
-        items={otherItems}
-        title="Other Markets"
       />
     </div>
   );
