@@ -2,7 +2,7 @@
 
 import type { UnifiedFeedItem } from "../types";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import { useUnifiedFeed } from "../hooks/useUnifiedFeed";
 import { classifyMarket, isLongTermMarket } from "../utils/discovery";
@@ -149,49 +149,65 @@ export function HomeMarketFeed() {
     [trendingAll],
   );
 
-  // DEBUG: scan the full "created" feed for futures without rendering them.
+  // DEBUG: scan the full "created" feed and report market distribution
+  // by country/league/competition. Stops when all pages are loaded.
+  const distributionLoggedRef = useRef(false);
+
   useEffect(() => {
     if (!recentData) return;
 
-    const allScanned = recentData.pages.flatMap((p) => p.items);
-    const counts = allScanned.reduce(
-      (acc, item) => {
-        const kind = classifyMarket(item);
-        acc[kind] += 1;
-        if (kind === "futures") {
-          const title =
-            item.type === "standalone"
-              ? item.data.question
-              : item.type === "group"
-                ? item.data.marketQuestion
-                : item.data.title;
-          acc.futureExamples.push(title);
-        }
-        return acc;
-      },
-      {
-        futures: 0,
-        matches: 0,
-        other: 0,
-        futureExamples: [] as string[],
-      },
-    );
-
-    // eslint-disable-next-line no-console
-    console.log("[HomeMarketFeed] futures scan", {
-      totalScanned: allScanned.length,
-      pagesScanned: recentData.pages.length,
-      futuresFound: counts.futures,
-      matchesFound: counts.matches,
-      otherFound: counts.other,
-      hasNextPage: hasRecentNextPage,
-      isFetchingNextPage: isFetchingRecentNextPage,
-      futureExamples: counts.futureExamples.slice(0, 5),
-    });
-
-    if (counts.futures > 0 || !hasRecentNextPage) return;
-    if (!isFetchingRecentNextPage) {
+    if (hasRecentNextPage && !isFetchingRecentNextPage) {
       fetchRecentNextPage();
+
+      return;
+    }
+
+    if (!hasRecentNextPage && !distributionLoggedRef.current) {
+      distributionLoggedRef.current = true;
+
+      const allScanned = recentData.pages.flatMap((p) => p.items);
+
+      const findTag = (item: UnifiedFeedItem, prefix: string): string | null =>
+        item.data.tags?.find((t) => t.toLowerCase().startsWith(prefix)) ?? null;
+
+      const rows: Record<
+        string,
+        {
+          country: string;
+          league: string;
+          competition: string;
+          total: number;
+          matches: number;
+          futures: number;
+          other: number;
+        }
+      > = {};
+
+      for (const item of allScanned) {
+        const country = findTag(item, "country-") ?? "—";
+        const league = findTag(item, "league-") ?? "—";
+        const competition = findTag(item, "competition-") ?? "—";
+        const kind = classifyMarket(item);
+        const key = `${country}|${league}|${competition}`;
+
+        if (!rows[key]) {
+          rows[key] = { country, league, competition, total: 0, matches: 0, futures: 0, other: 0 };
+        }
+
+        rows[key].total += 1;
+        rows[key][kind] += 1;
+      }
+
+      const table = Object.values(rows).sort((a, b) => b.total - a.total);
+
+      // eslint-disable-next-line no-console
+      console.log("[HomeMarketFeed] full feed distribution", {
+        totalScanned: allScanned.length,
+        pagesScanned: recentData.pages.length,
+        groups: table.length,
+      });
+      // eslint-disable-next-line no-console
+      console.table(table);
     }
   }, [
     recentData,
