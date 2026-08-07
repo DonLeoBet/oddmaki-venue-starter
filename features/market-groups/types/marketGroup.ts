@@ -34,4 +34,6 @@ export interface FormattedMarketGroup {
   outcomes: FormattedGroupOutcome[];
   totalVolume: string;
   volumeFormatted: string;
+  /** Number of unique traders across all child markets */
+  participantCount: number;
 }

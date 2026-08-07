@@ -166,10 +166,13 @@ export function MarketCard({ market, isDpm = false }: MarketCardProps) {
                 {parseInt(market.totalOrders) === 1 ? "order" : "orders"}
               </span>
             )}
-            <span>
-              {isDpm
-                ? `${formatVolume(market.dpmMarket?.totalCollateral ?? "0", 6)} Pool`
-                : `${market.volumeFormatted} Vol.`}
+            <span className="flex items-center gap-2">
+              <span>
+                {isDpm
+                  ? `${formatVolume(market.dpmMarket?.totalCollateral ?? "0", 6)} Pool`
+                  : `${market.volumeFormatted} Vol.`}
+              </span>
+              <span>{market.uniqueTraders} traders</span>
             </span>
           </div>
         </CardFooter>

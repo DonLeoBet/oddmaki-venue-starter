@@ -54,7 +54,7 @@ function formatGroup(sdkFormatted: any, rawGroup: any): FormattedMarketGroup {
     }),
   );
 
-  // Sum volume across all child markets
+  // Sum volume and unique traders across all child markets
   const totalVolume = (rawGroup.markets || [])
     .reduce(
       (sum: number, m: { totalVolume?: string }) =>
@@ -62,6 +62,12 @@ function formatGroup(sdkFormatted: any, rawGroup: any): FormattedMarketGroup {
       0,
     )
     .toString();
+
+  const participantCount = (rawGroup.markets || []).reduce(
+    (sum: number, m: { uniqueTraders?: string }) =>
+      sum + parseInt(m.uniqueTraders || "0", 10),
+    0,
+  );
 
   return {
     groupId: sdkFormatted.groupId,
@@ -79,6 +85,7 @@ function formatGroup(sdkFormatted: any, rawGroup: any): FormattedMarketGroup {
     outcomes,
     totalVolume,
     volumeFormatted: formatVolume(totalVolume, 6),
+    participantCount,
   };
 }
 

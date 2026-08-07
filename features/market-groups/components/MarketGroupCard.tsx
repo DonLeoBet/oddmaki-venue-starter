@@ -55,7 +55,8 @@ function OutcomeRow({
   isWinner: boolean;
   isResolved: boolean;
 }) {
-  const pct = Math.round(outcome.probability);
+  const yes = Math.round(outcome.probability);
+  const no = Math.max(0, Math.min(100, 100 - yes));
 
   return (
     <div className="flex items-center justify-between py-2 gap-3">
@@ -85,16 +86,16 @@ function OutcomeRow({
         ) : (
           <>
             <span
-              className={`text-sm font-semibold ${pct >= 50 ? "text-primary" : "text-default-500"}`}
+              className={`text-sm font-semibold ${yes >= 50 ? "text-primary" : "text-default-500"}`}
             >
-              {pct}%
+              {yes}%
             </span>
             <div className="flex gap-1">
               <span className="text-xs rounded bg-primary/10 text-primary px-2 py-0.5 font-semibold">
-                Yes
+                Yes {yes}¢
               </span>
               <span className="text-xs rounded bg-secondary/10 text-secondary px-2 py-0.5 font-semibold">
-                No
+                No {no}¢
               </span>
             </div>
           </>
@@ -107,6 +108,11 @@ function OutcomeRow({
 export function MarketGroupCard({ group }: MarketGroupCardProps) {
   const isUpcoming = group.status === MarketGroupStatus.DRAFT;
 
+  // Sort by probability so the current favourite is first
+  const sortedOutcomes = [...group.outcomes].sort(
+    (a, b) => b.probability - a.probability,
+  );
+
   return (
     <NextLink className="block" href={`/market/multi/${group.groupId}`}>
       <Card className="w-full h-auto min-h-[180px] hover:scale-[1.02] transition-transform cursor-pointer">
@@ -118,7 +124,7 @@ export function MarketGroupCard({ group }: MarketGroupCardProps) {
 
         <CardBody className="gap-0 py-2 flex-1">
           <div className="flex flex-col divide-y divide-default-100">
-            {group.outcomes.map((outcome) => (
+            {sortedOutcomes.map((outcome) => (
               <OutcomeRow
                 key={outcome.marketId}
                 isResolved={group.status === MarketGroupStatus.RESOLVED}
@@ -136,6 +142,7 @@ export function MarketGroupCard({ group }: MarketGroupCardProps) {
             ) : (
               <span>{group.volumeFormatted} Vol.</span>
             )}
+            <span>{group.participantCount} traders</span>
           </div>
         </CardFooter>
       </Card>

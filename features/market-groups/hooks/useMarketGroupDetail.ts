@@ -37,7 +37,7 @@ export function useMarketGroupDetail(groupId: string) {
         }),
       );
 
-      // Sum volume across all child markets
+      // Sum volume and unique traders across all child markets
 
       const totalVolume = (group.markets || [])
         .reduce(
@@ -45,6 +45,11 @@ export function useMarketGroupDetail(groupId: string) {
           0,
         )
         .toString();
+
+      const participantCount = (group.markets || []).reduce(
+        (sum: number, m: any) => sum + parseInt(m.uniqueTraders || "0", 10),
+        0,
+      );
 
       return {
         groupId: formatted.groupId,
@@ -63,6 +68,7 @@ export function useMarketGroupDetail(groupId: string) {
         outcomes,
         totalVolume,
         volumeFormatted: formatVolume(totalVolume, 6),
+        participantCount,
       };
     },
     enabled: !!groupId && !!client,

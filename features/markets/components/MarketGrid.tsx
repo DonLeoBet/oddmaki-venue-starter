@@ -23,6 +23,9 @@ import {
 } from "@/features/price-market-series";
 import { CATEGORIES } from "@/config/tags.config";
 
+const ENABLE_MATCH_MARKETS =
+  process.env.NEXT_PUBLIC_ENABLE_MATCH_MARKETS === "true";
+
 type FeedTab = "futures" | "matches";
 
 const FUTURE_PHRASES = [
@@ -136,10 +139,16 @@ export function MarketGrid() {
       const category = CATEGORIES.find((c) => c.id === selectedCategory);
 
       if (category && category.matchTags.length > 0) {
+        const mustMatchAll = category.matchAll ?? false;
+
         result = result.filter((item: UnifiedFeedItem) => {
-          return item.data.tags?.some((tag: string) =>
-            category.matchTags.includes(tag),
-          );
+          const itemTags = item.data.tags ?? [];
+
+          if (mustMatchAll) {
+            return category.matchTags.every((tag) => itemTags.includes(tag));
+          }
+
+          return itemTags.some((tag) => category.matchTags.includes(tag));
         });
       }
     }
@@ -215,17 +224,19 @@ export function MarketGrid() {
 
   return (
     <div className="flex flex-1 flex-col gap-4">
-      <Tabs
-        aria-label="Market feed"
-        fullWidth
-        selectedKey={activeTab}
-        size="md"
-        variant="underlined"
-        onSelectionChange={(key) => setActiveTab(key as FeedTab)}
-      >
-        <Tab key="futures" title="Futures" />
-        <Tab key="matches" title="Matches" />
-      </Tabs>
+      {ENABLE_MATCH_MARKETS && (
+        <Tabs
+          aria-label="Market feed"
+          fullWidth
+          selectedKey={activeTab}
+          size="md"
+          variant="underlined"
+          onSelectionChange={(key) => setActiveTab(key as FeedTab)}
+        >
+          <Tab key="futures" title="Futures" />
+          <Tab key="matches" title="Matches" />
+        </Tabs>
+      )}
 
       {/* Filter controls — toggled via filter icon in category bar */}
       {showFilters && (
