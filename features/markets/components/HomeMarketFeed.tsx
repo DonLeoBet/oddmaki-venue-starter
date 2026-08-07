@@ -87,12 +87,18 @@ export function HomeMarketFeed() {
     data: trendingData,
     isLoading: trendingLoading,
     error: trendingError,
-  } = useUnifiedFeed("volume");
+  } = useUnifiedFeed("volume", 50);
   const {
     data: recentData,
     isLoading: recentLoading,
     error: recentError,
-  } = useUnifiedFeed("created");
+  } = useUnifiedFeed("created", 50);
+
+  // eslint-disable-next-line no-console
+  console.log("[HomeMarketFeed] data", {
+    rawTrending: trendingData?.pages[0]?.items?.length,
+    rawRecent: recentData?.pages[0]?.items?.length,
+  });
 
   const trendingItems = useMemo(
     () =>

@@ -48,7 +48,7 @@ export function MarketGrid() {
     hasNextPage,
     fetchNextPage,
     isFetchingNextPage,
-  } = useUnifiedFeed(querySortBy);
+  } = useUnifiedFeed(querySortBy, 12);
 
   const items = useMemo(
     () => data?.pages.flatMap((page) => page.items) ?? [],
@@ -118,6 +118,17 @@ export function MarketGrid() {
   );
   const { data: seriesWindows } = useSeriesCurrentWindows(seriesIds);
 
+  // eslint-disable-next-line no-console
+  console.log("[MarketGrid] render", {
+    selectedCategory,
+    activeTab,
+    querySortBy,
+    items: items.length,
+    filteredItems: filteredItems.length,
+    hasNextPage,
+    isFetchingNextPage,
+  });
+
   if (error) {
     // eslint-disable-next-line no-console
     console.error("[MarketGrid] unified feed error:", error);
@@ -171,7 +182,7 @@ export function MarketGrid() {
         </div>
       )}
 
-      {filteredItems.length === 0 && !hasNextPage ? (
+      {filteredItems.length === 0 ? (
         <EmptyState
           description="No markets match the current filters. Try adjusting your selection."
           title="No markets found"

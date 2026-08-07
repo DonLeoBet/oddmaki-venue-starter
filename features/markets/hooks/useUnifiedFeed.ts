@@ -94,19 +94,46 @@ type UnifiedFeedPage = {
   hasMore: boolean;
 };
 
-export function useUnifiedFeed(sortBy: "created" | "volume" = "created") {
+export function useUnifiedFeed(
+  sortBy: "created" | "volume" = "created",
+  pageSize: number = UNIFIED_FEED_PAGE_SIZE,
+) {
   const client = useOddMakiClient();
   const venueId = getVenueId();
 
+  const queryKey = queryKeys.unifiedFeed.list(
+    venueId?.toString(),
+    sortBy,
+    pageSize.toString(),
+  );
+
   return useInfiniteQuery({
-    queryKey: queryKeys.unifiedFeed.list(venueId?.toString(), sortBy),
+    queryKey,
     initialPageParam: 0,
     queryFn: async ({ pageParam }): Promise<UnifiedFeedPage> => {
+      // eslint-disable-next-line no-console
+      console.log("[useUnifiedFeed] fetch start", {
+        queryKey,
+        pageParam,
+        sortBy,
+        venueId: venueId?.toString(),
+        pageSize,
+      });
+
       const feedData = await client.public.getUnifiedMarketFeed({
         venueId,
-        first: UNIFIED_FEED_PAGE_SIZE,
+        first: pageSize,
         skip: pageParam,
         sortBy,
+      });
+
+      // eslint-disable-next-line no-console
+      console.log("[useUnifiedFeed] fetch end", {
+        queryKey,
+        pageParam,
+        standaloneCount: feedData?.standaloneMarkets?.length ?? 0,
+        groupCount: feedData?.marketGroups?.length ?? 0,
+        seriesCount: feedData?.priceMarketSeries?.length ?? 0,
       });
 
       const merged = client.public.mergeAndSortFeed(feedData, sortBy);
@@ -129,14 +156,22 @@ export function useUnifiedFeed(sortBy: "created" | "volume" = "created") {
       const groupCount = feedData?.marketGroups?.length ?? 0;
       const seriesCount = feedData?.priceMarketSeries?.length ?? 0;
       const hasMore =
-        standaloneCount >= UNIFIED_FEED_PAGE_SIZE ||
-        groupCount >= UNIFIED_FEED_PAGE_SIZE ||
-        seriesCount >= UNIFIED_FEED_PAGE_SIZE;
+        standaloneCount >= pageSize ||
+        groupCount >= pageSize ||
+        seriesCount >= pageSize;
+
+      // eslint-disable-next-line no-console
+      console.log("[useUnifiedFeed] return", {
+        queryKey,
+        pageParam,
+        items: items.length,
+        hasMore,
+      });
 
       return { items, hasMore };
     },
     getNextPageParam: (lastPage, allPages) =>
-      lastPage.hasMore ? allPages.length * UNIFIED_FEED_PAGE_SIZE : undefined,
+      lastPage.hasMore ? allPages.length * pageSize : undefined,
     enabled: !!client && venueId !== undefined,
     staleTime: 30_000,
     refetchInterval: 60_000,

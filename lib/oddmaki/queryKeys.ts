@@ -108,8 +108,8 @@ export const queryKeys = {
 
   unifiedFeed: {
     all: ["unifiedFeed"] as const,
-    list: (venueId?: string, sortBy?: string) =>
-      ["unifiedFeed", venueId, sortBy] as const,
+    list: (venueId?: string, sortBy?: string, pageSize?: string) =>
+      ["unifiedFeed", venueId, sortBy, pageSize] as const,
   },
 
   accessControl: {
