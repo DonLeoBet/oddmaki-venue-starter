@@ -55,54 +55,13 @@ export function MarketGrid() {
     [data],
   );
 
+  // DEBUG: bypass all classification filters to confirm the data source works.
   const filteredItems = useMemo(() => {
-    if (items.length === 0) return [];
+    // eslint-disable-next-line no-console
+    console.log("[MarketGrid] raw items", items.length);
 
-    let result = items;
-
-    // Filter by category
-    if (selectedCategory) {
-      const category = CATEGORIES.find((c) => c.id === selectedCategory);
-
-      if (category && category.matchTags.length > 0) {
-        const mustMatchAll = category.matchAll ?? false;
-
-        result = result.filter((item: UnifiedFeedItem) => {
-          const itemTags = item.data.tags ?? [];
-
-          if (mustMatchAll) {
-            return category.matchTags.every((tag) => itemTags.includes(tag));
-          }
-
-          return itemTags.some((tag) => category.matchTags.includes(tag));
-        });
-      }
-    }
-
-    // Split by tab and status
-    result = result.filter((item: UnifiedFeedItem) => {
-      const isFuture = isLongTermMarket(item);
-
-      if (activeTab === "futures" && !isFuture) return false;
-      if (activeTab === "matches" && isFuture) return false;
-
-      if (statusFilter === "Resolved") {
-        return item.data.status === MarketStatus.RESOLVED;
-      }
-
-      // Active filter: futures include DRAFT as UPCOMING; matches stay Active only
-      if (activeTab === "futures") {
-        return (
-          item.data.status === MarketStatus.ACTIVE ||
-          item.data.status === MarketStatus.DRAFT
-        );
-      }
-
-      return item.data.status === MarketStatus.ACTIVE;
-    });
-
-    return result;
-  }, [items, selectedCategory, activeTab, statusFilter]);
+    return items;
+  }, [items]);
 
   // The subgraph no longer denormalizes a series' current window, so derive it
   // for the visible series in one batched query and pass it to each card.

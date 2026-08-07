@@ -100,11 +100,9 @@ export function HomeMarketFeed() {
     rawRecent: recentData?.pages[0]?.items?.length,
   });
 
+  // DEBUG: bypass classification filtering to confirm the data source works.
   const trendingItems = useMemo(
-    () =>
-      (trendingData?.pages[0]?.items ?? [])
-        .filter(isLongTermMarket)
-        .slice(0, MAX_TRENDING),
+    () => (trendingData?.pages[0]?.items ?? []).slice(0, MAX_TRENDING),
     [trendingData],
   );
 
@@ -113,17 +111,14 @@ export function HomeMarketFeed() {
       (trendingData?.pages[0]?.items ?? [])
         .filter(
           (item): item is Extract<UnifiedFeedItem, { type: "group" }> =>
-            item.type === "group" && isLongTermMarket(item),
+            item.type === "group",
         )
         .slice(0, MAX_FEATURED),
     [trendingData],
   );
 
   const recentItems = useMemo(
-    () =>
-      (recentData?.pages[0]?.items ?? [])
-        .filter(isLongTermMarket)
-        .slice(0, MAX_RECENT),
+    () => (recentData?.pages[0]?.items ?? []).slice(0, MAX_RECENT),
     [recentData],
   );
 

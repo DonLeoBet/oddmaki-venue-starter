@@ -160,13 +160,53 @@ export function useUnifiedFeed(
         groupCount >= pageSize ||
         seriesCount >= pageSize;
 
+      const firstFive = items.slice(0, 5).map((item) => {
+        const base = { type: item.type, status: item.data.status };
+
+        if (item.type === "standalone") {
+          return {
+            ...base,
+            id: item.data.marketId,
+            title: item.data.question,
+            tags: item.data.tags,
+          };
+        }
+
+        if (item.type === "group") {
+          return {
+            ...base,
+            id: item.data.groupId,
+            title: item.data.marketQuestion,
+            tags: item.data.tags,
+            totalMarkets: item.data.totalMarkets,
+          };
+        }
+
+        return {
+          ...base,
+          id: item.data.id,
+          title: item.data.title,
+          tags: item.data.tags,
+          interval: item.data.interval,
+        };
+      });
+
+      const statuses = Array.from(new Set(items.map((i) => i.data.status)));
+
       // eslint-disable-next-line no-console
-      console.log("[useUnifiedFeed] return", {
+      console.log("[useUnifiedFeed] raw totals", {
         queryKey,
         pageParam,
-        items: items.length,
+        standaloneCount,
+        groupCount,
+        seriesCount,
+        merged: items.length,
         hasMore,
+        statuses,
       });
+
+      // eslint-disable-next-line no-console
+      console.log("[useUnifiedFeed] first 5", firstFive);
 
       return { items, hasMore };
     },
